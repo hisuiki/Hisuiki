@@ -725,18 +725,14 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   align-items: stretch;
 }
 
-/* The grid, drawn only while a corner is being pulled. It exists to be aimed at: a size that snaps
-   without showing what it is snapping to just looks like it is fighting you. */
-.widget-board.is-snapping::before {
-  content: "";
+/* The grid, drawn only while a corner is being pulled. It exists to be aimed at, so its lines come
+   from the tracks the browser resolved — a repeating gradient cannot describe a grid with gaps. */
+.board-grid {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image:
-    repeating-linear-gradient(to right, var(--color-accent-soft) 0 1px, transparent 1px calc(100% / 4)),
-    repeating-linear-gradient(to bottom, var(--color-accent-soft) 0 1px, transparent 1px var(--free-row, 72px));
-  background-size: 100% 100%;
+  background-repeat: no-repeat;
 }
 .widget-board.is-snapping > .widget { position: relative; z-index: 1; }
 

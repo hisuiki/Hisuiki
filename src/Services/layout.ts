@@ -5,6 +5,7 @@ import type {
   AnchoredLayout,
   AnchorBackground,
   BoardSettings,
+  GridArea,
   PageSettings,
   ProfileLayout,
   Widget,
@@ -292,6 +293,35 @@ export function rowsOf(item: Widget): number {
   const stored = item.props?.rows;
   const raw = typeof stored === "number" && Number.isFinite(stored) ? Math.round(stored) : 1;
   return Math.min(40, Math.max(1, raw));
+}
+
+/**
+ * The cells a widget covers, or null while the grid is placing it.
+ *
+ * Only widgets that have been put somewhere have an area: CSS grid's own placement already steps
+ * over explicitly placed items, so an unplaced widget cannot land on top of anything.
+ */
+export function areaOf(item: Widget, columns: number): GridArea | null {
+  const span = spanOf(item, columns);
+  const cell = cellOf(item, columns, span);
+  return cell === null ? null : { ...cell, span, rows: rowsOf(item) };
+}
+
+const overlaps = (a: GridArea, b: GridArea) =>
+  a.col < b.col + b.span && b.col < a.col + a.span && a.row < b.row + b.rows && b.row < a.row + a.rows;
+
+/** Whether `area` is clear of every placed sibling but `id`. Widgets do not stack. */
+export function isFree(
+  widgets: Widget[],
+  id: string,
+  area: GridArea,
+  columns: number,
+): boolean {
+  return widgets.every((item) => {
+    if (item.id === id) return true;
+    const taken = areaOf(item, columns);
+    return taken === null || !overlaps(area, taken);
+  });
 }
 
 /** The space between a container's children, in pixels. */

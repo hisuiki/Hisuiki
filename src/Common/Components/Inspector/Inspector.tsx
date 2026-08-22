@@ -5,7 +5,12 @@ import type { InspectorProps } from "../../../Types";
 const WIDTH_KEY = "hisuiki.inspector.width";
 const DEFAULT_WIDTH = 360;
 const MIN_WIDTH = 280;
-const MAX_WIDTH = 720;
+/** Wide enough to lay the widget shelf out several tiles across, and still leave the page usable. */
+const MAX_WIDTH = 1200;
+/** Never more than most of the window, whatever the cap says. */
+const PAGE_ROOM = 320;
+
+const widthLimit = () => Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, window.innerWidth - PAGE_ROOM));
 import Anchored from "../Anchored/Anchored";
 import Glyph from "../WidgetIcon/Glyph";
 
@@ -27,7 +32,7 @@ export default function Inspector({
     try {
       const stored = Number(window.localStorage.getItem(WIDTH_KEY));
       return Number.isFinite(stored) && stored > 0
-        ? Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, stored))
+        ? Math.min(widthLimit(), Math.max(MIN_WIDTH, stored))
         : DEFAULT_WIDTH;
     } catch {
       return DEFAULT_WIDTH;
@@ -101,7 +106,7 @@ export default function Inspector({
           }}
           onPointerMove={(e) => {
             if (!dragging.current || !sidebar.current) return;
-            const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, window.innerWidth - e.clientX));
+            const next = Math.min(widthLimit(), Math.max(MIN_WIDTH, window.innerWidth - e.clientX));
             sidebar.current.style.width = `${next}px`;
             document.documentElement.style.setProperty("--inspector-width", `${next}px`);
           }}

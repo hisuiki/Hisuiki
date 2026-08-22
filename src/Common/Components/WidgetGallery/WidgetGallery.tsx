@@ -36,7 +36,7 @@ function sample(kind: WidgetKind, t: (key: string) => string): Widget {
  * The shelf a page is built from. Each tile is the real widget, filled with this profile's own
  * content where it has any, and dragged onto whichever anchor it should live at.
  */
-export default function WidgetGallery({ onAdd, embedded, onDragStart }: WidgetGalleryProps) {
+export default function WidgetGallery({ onAdd, embedded }: WidgetGalleryProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [confirming, setConfirming] = useState<WidgetKind | null>(null);
@@ -196,15 +196,13 @@ export default function WidgetGallery({ onAdd, embedded, onDragStart }: WidgetGa
                       data-widget={kind}
                       ref={i === 0 ? measureTile : undefined}
                       // The tile is the drag source. A button covering it was not one: browsers do
-                      // not start a drag from a form control, so dragstart never fired and nothing
-                      // downstream of it — the preview, closing the panel — ever happened.
+                      // not start a drag from a form control, so dragstart never fired at all.
                       draggable
                       onDragStart={(e) => {
                         const id = `w-${newId()}`;
                         e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ id, kind }));
                         e.dataTransfer.effectAllowed = "copy";
                         announceDrag({ id, kind });
-                        onDragStart?.();
                       }}
                       onDragEnd={() => cancelPreview()}
                     >

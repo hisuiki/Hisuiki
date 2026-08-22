@@ -12,11 +12,21 @@ import {
   gapOf,
   scrollOf,
   cellOf,
+  isFree,
   rowsOf,
   spanOf,
   wrapWidgets,
 } from "../../../Services/layout";
-import type { MenuItem, Widget, WidgetBoardProps } from "../../../Types";
+import type { GridMetrics, MenuItem, ResizePreview, Widget, WidgetBoardProps } from "../../../Types";
+import {
+  cellFromPoint,
+  gridLines,
+  gridMetrics,
+  trackAt,
+  trackSize,
+  trackStart,
+  tracksForSize,
+} from "../../../Services/grid";
 import { styleOf, styleVariables } from "../../../Services/widgetStyle";
 
 import { WIDGET_REGISTRY } from "../../../Widgets";
@@ -94,14 +104,15 @@ export default function WidgetBoard({
     inspectorAnchor.current = id ? flipRef.element(id) : null;
     setInspecting(id);
   };
-  // The widget whose corner is being pulled. While this is set the board shows its grid, so there is
-  // something to aim at rather than a size that changes for no visible reason.
-  const [resizing, setResizing] = useState<{
-    id: string;
-    boardWidth: number;
-    left: number;
-    top: number;
-  } | null>(null);
+  // The footprint a corner drag is aiming at. The widget itself is left alone until the corner is
+  // released: resizing it live reflowed the rows under the gesture, which is what made the preview
+  // drift away from the cells it was supposed to be showing.
+  const [preview, setPreview] = useState<ResizePreview | null>(null);
+  // Measured once, when the gesture starts, so the whole drag reads the same grid.
+  const resizeGeom = useRef<{ metrics: GridMetrics; col: number; row: number; total: number } | null>(null);
+  // Where inside the widget it was picked up, so a drop puts its corner where the widget was held
+  // rather than under the pointer.
+  const grabOffset = useRef<{ x: number; y: number } | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -121,22 +132,36 @@ export default function WidgetBoard({
   // many times a second, is what made the board flicker while something was being moved.
   const flipRef = useFlip(activeDraggingId === null && draggingGlobal === null);
 
+  /** Stable, so the release listener below does not resubscribe on every list change. */
+  const applySize = useCallback(
+    (id: string, span: number, rows: number) =>
+      onChange?.((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, props: { ...item.props, span, rows } } : item)),
+      ),
+    [onChange],
+  );
+
   // The safety net for a resize: capture can be lost when the handle is reconciled mid-drag, and
   // without this the release never arrives and the widget stays locked out of dragging.
   useEffect(() => {
-    if (resizing === null) return;
+    if (preview === null) return;
 
-    const stop = () => setResizing(null);
-    window.addEventListener("pointerup", stop);
-    window.addEventListener("pointercancel", stop);
-    window.addEventListener("blur", stop);
+    const commit = () => {
+      applySize(preview.id, preview.span, preview.rows);
+      setPreview(null);
+    };
+    const abandon = () => setPreview(null);
+
+    window.addEventListener("pointerup", commit);
+    window.addEventListener("pointercancel", abandon);
+    window.addEventListener("blur", abandon);
 
     return () => {
-      window.removeEventListener("pointerup", stop);
-      window.removeEventListener("pointercancel", stop);
-      window.removeEventListener("blur", stop);
+      window.removeEventListener("pointerup", commit);
+      window.removeEventListener("pointercancel", abandon);
+      window.removeEventListener("blur", abandon);
     };
-  }, [resizing]);
+  }, [preview, applySize]);
 
   /**
    * The widgets picked out, at this level only.
@@ -242,63 +267,95 @@ export default function WidgetBoard({
     [onChange],
   );
 
-  /** The cell under the pointer, for a widget being dragged across the board. */
-  const cellUnder = (event: { clientX: number; clientY: number }, span: number) => {
-    const rect = boardRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-
-    const total = columns ?? GRID_COLUMNS;
-    const col = Math.floor((event.clientX - rect.left) / (rect.width / total)) + 1;
-    const row = Math.floor((event.clientY - rect.top) / ROW_HEIGHT) + 1;
-
-    return {
-      col: Math.min(Math.max(1, col), Math.max(1, total - span + 1)),
-      row: Math.max(1, row),
-    };
-  };
-
-  /** Moves the widget being dragged to wherever the pointer is, in whole cells. */
+  /** Moves the widget being dragged to whichever cell it is being held over. */
   const placeUnder = (event: { clientX: number; clientY: number }) => {
     if (reorderFrame.current || activeDraggingId === null) return;
     reorderFrame.current = window.requestAnimationFrame(() => {
       reorderFrame.current = 0;
     });
 
+    const board = boardRef.current;
     const item = widgets.find((w) => w.id === activeDraggingId);
-    if (!item) return;
+    if (!board || !item) return;
 
-    const total = columns ?? GRID_COLUMNS;
-    const cell = cellUnder(event, spanOf(item, total));
-    if (!cell) return;
+    const metrics = gridMetrics(board);
+    const total = Math.max(1, metrics.columns.length);
+    const grab = grabOffset.current ?? { x: 0, y: 0 };
+    // The widget's own corner, not the pointer: dropping should leave it where it looks like it is.
+    const cell = cellFromPoint(
+      metrics,
+      event.clientX - grab.x,
+      event.clientY - grab.y,
+      spanOf(item, total),
+    );
 
-    const current = cellOf(item, total, spanOf(item, total));
+    const span = spanOf(item, total);
+    const current = cellOf(item, total, span);
     if (current && current.col === cell.col && current.row === cell.row) return;
+    // Widgets do not stack: over an occupied cell the widget simply stays where it was.
+    if (!isFree(widgets, item.id, { ...cell, span, rows: rowsOf(item) }, total)) return;
 
     replace(item.id, { ...item, props: { ...item.props, col: cell.col, row: cell.row } });
+  };
+
+  /** The footprint of `span` × `rows` cells, from where the gesture started. */
+  const previewOf = (id: string, span: number, rows: number): ResizePreview | null => {
+    const geom = resizeGeom.current;
+    if (!geom) return null;
+
+    const { metrics, col, row } = geom;
+    return {
+      id,
+      span,
+      rows,
+      lines: gridLines(metrics),
+      left: trackStart(metrics.columns, metrics.columnGap, col, 0),
+      top: trackStart(metrics.rows, metrics.rowGap, row, ROW_HEIGHT),
+      width: trackSize(metrics.columns, metrics.columnGap, col, span, 0),
+      height: trackSize(metrics.rows, metrics.rowGap, row, rows, ROW_HEIGHT),
+    };
+  };
+
+  /** The largest part of a wanted size that lands on empty cells. */
+  const clampToFree = (
+    id: string,
+    col: number,
+    row: number,
+    wanted: { span: number; rows: number },
+    total: number,
+  ) => {
+    let { span, rows } = wanted;
+    while (span > 1 && !isFree(widgets, id, { col, row, span, rows }, total)) span -= 1;
+    while (rows > 1 && !isFree(widgets, id, { col, row, span, rows }, total)) rows -= 1;
+    return { span, rows };
   };
 
   /**
    * Pulling the bottom-right corner.
    *
-   * On a free board this sets the widget's span in cells directly. On an ordinary grid there are
-   * only three widths to land on, so the column count is rounded to the nearest one the widget
-   * allows — a widget that only comes full width snaps back rather than sticking wherever the
-   * pointer stopped.
+   * Only the preview follows the pointer; the widget takes the size on release. Cells are measured
+   * from the grid the browser resolved rather than from a column count and a gap in pixels — the gap
+   * is authored in em and rows grow with their contents, so the arithmetic version was always a few
+   * pixels out and further out the taller the board got.
    */
-  const resizeTo = (item: Widget, event: { clientX: number; clientY: number }) => {
-    const rect = boardRef.current?.getBoundingClientRect();
-    const box = flipRef.rect(item.id);
-    if (!rect || !box) return;
+  const resizeTo = (event: { clientX: number; clientY: number }) => {
+    const geom = resizeGeom.current;
+    const current = preview;
+    if (!geom || !current) return;
 
-    const total = columns ?? GRID_COLUMNS;
-    const cellWidth = rect.width / total;
-    const span = Math.min(total, Math.max(1, Math.round((event.clientX - box.left) / cellWidth)));
-    // Both axes: a corner that only ever changed the width is half a corner.
-    const rows = Math.min(40, Math.max(1, Math.round((event.clientY - box.top) / ROW_HEIGHT)));
+    const { metrics, col, row, total } = geom;
+    const width = event.clientX - (metrics.originX + trackStart(metrics.columns, metrics.columnGap, col, 0));
+    const height = event.clientY - (metrics.originY + trackStart(metrics.rows, metrics.rowGap, row, ROW_HEIGHT));
 
-    if (span !== spanOf(item, total) || rows !== rowsOf(item)) {
-      replace(item.id, { ...item, props: { ...item.props, span, rows } });
-    }
+    const wanted = {
+      span: tracksForSize(metrics.columns, metrics.columnGap, col, width, 0, Math.max(1, total - col)),
+      rows: tracksForSize(metrics.rows, metrics.rowGap, row, height, ROW_HEIGHT, 40),
+    };
+    // Growing stops at whatever is already there rather than covering it.
+    const fits = clampToFree(current.id, col + 1, row + 1, wanted, total);
+
+    if (fits.span === current.span && fits.rows === current.rows) return;
+    setPreview(previewOf(current.id, fits.span, fits.rows));
   };
 
   /**
@@ -395,7 +452,7 @@ export default function WidgetBoard({
         className={[
           "widget-board",
           editing ? "is-editing" : "",
-          resizing !== null ? "is-snapping" : "",
+          preview !== null ? "is-snapping" : "",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -482,38 +539,25 @@ export default function WidgetBoard({
         {/* The footprint a resize will land on, drawn over the board in pixels rather than as a grid
             item — a grid item jumps between cells, and the point of this is to show the result
             settling into place. */}
-        {resizing !== null && (() => {
-          const item = widgets.find((w) => w.id === resizing.id);
-          if (!item || resizing.boardWidth === 0) return null;
+        {preview !== null && (
+          <div
+            className="board-grid"
+            aria-hidden="true"
+            style={{ backgroundImage: `${preview.lines.x}, ${preview.lines.y}` }}
+          />
+        )}
 
-          const total = columns ?? GRID_COLUMNS;
-          const span = spanOf(item, total);
-          const rows = rowsOf(item);
-          const cell = cellOf(item, total, span);
-          const space = gap ?? 12;
-          const cellWidth = (resizing.boardWidth - space * (total - 1)) / total;
-
-          // Where it will be if it has a cell of its own; where it started if the grid places it.
-          const left = cell ? (cell.col - 1) * (cellWidth + space) : resizing.left;
-          const top = cell ? (cell.row - 1) * (ROW_HEIGHT + space) : resizing.top;
-
-          return (
-            <div
-              className="resize-preview"
-              aria-hidden="true"
-              style={{
-                left,
-                top,
-                width: span * cellWidth + (span - 1) * space,
-                height: rows * ROW_HEIGHT + (rows - 1) * space,
-              }}
-            >
-              <span className="resize-preview-size">
-                {span} × {rows}
-              </span>
-            </div>
-          );
-        })()}
+        {preview !== null && (
+          <div
+            className="resize-preview"
+            aria-hidden="true"
+            style={{ left: preview.left, top: preview.top, width: preview.width, height: preview.height }}
+          >
+            <span className="resize-preview-size">
+              {preview.span} × {preview.rows}
+            </span>
+          </div>
+        )}
 
         {editing && widgets.length === 0 && <EmptyBoard />}
 
@@ -579,7 +623,7 @@ export default function WidgetBoard({
               // Takes the slack at the end of a bar — how the account tile sits at the far right
               // without being pinned there.
               data-push={widget.props?.push ? "" : undefined}
-              draggable={editing && resizing === null}
+              draggable={editing && preview === null}
               onContextMenu={(e) => {
                 if (!editing) return;
                 e.preventDefault();
@@ -591,6 +635,8 @@ export default function WidgetBoard({
               }}
               onDragStart={(e) => {
                 draggedNode.current = e.currentTarget;
+                const box = e.currentTarget.getBoundingClientRect();
+                grabOffset.current = { x: e.clientX - box.left, y: e.clientY - box.top };
                 setDragging(widget.id);
                 // So another anchor can identify what landed on it, and so every anchor knows a
                 // drag is in flight and can offer itself as a target.
@@ -600,6 +646,7 @@ export default function WidgetBoard({
               }}
               onDragEnd={() => {
                 draggedNode.current = null;
+                grabOffset.current = null;
                 setDragging(null);
                 announceDrag(null);
               }}
@@ -726,18 +773,25 @@ export default function WidgetBoard({
                       // the release.
                     }
 
-                    const board = boardRef.current?.getBoundingClientRect();
+                    const board = boardRef.current;
                     const box = flipRef.rect(widget.id);
-                    setResizing({
-                      id: widget.id,
-                      boardWidth: board?.width ?? 0,
-                      left: board && box ? box.left - board.left : 0,
-                      top: board && box ? box.top - board.top : 0,
-                    });
+                    if (!board || !box) return;
+
+                    const metrics = gridMetrics(board);
+                    const total = Math.max(1, metrics.columns.length);
+                    resizeGeom.current = {
+                      metrics,
+                      total,
+                      // Where the widget actually sits, which is not always where its stored cell
+                      // says: an unplaced widget is wherever the grid put it.
+                      col: trackAt(metrics.columns, metrics.columnGap, box.left - metrics.originX, 0),
+                      row: trackAt(metrics.rows, metrics.rowGap, box.top - metrics.originY, ROW_HEIGHT),
+                    };
+                    setPreview(previewOf(widget.id, spanOf(widget, total), rowsOf(widget)));
                   }}
                   onPointerMove={(e) => {
-                    if (resizing?.id !== widget.id) return;
-                    resizeTo(widget, e);
+                    if (preview?.id !== widget.id) return;
+                    resizeTo(e);
                   }}
                   onPointerUp={(e) => {
                     try {
@@ -745,28 +799,25 @@ export default function WidgetBoard({
                     } catch {
                       // Already released, or never captured.
                     }
-                    setResizing(null);
+                    // The window listener commits the size; this only ends the gesture.
                   }}
-                  onPointerCancel={() => setResizing(null)}
+                  onPointerCancel={() => setPreview(null)}
                   // The same thing from the keyboard, since a corner is pointer-only by nature.
                   onKeyDown={(e) => {
                     const vertical = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
-                    if (vertical !== 0) {
-                      e.preventDefault();
-                      const rows = Math.min(40, Math.max(1, rowsOf(widget) + vertical));
-                      replace(widget.id, { ...widget, props: { ...widget.props, rows } });
-                      return;
-                    }
-
                     const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-                    if (step === 0) return;
+                    if (vertical === 0 && step === 0) return;
                     e.preventDefault();
 
-                    {
-                      const total = columns ?? GRID_COLUMNS;
-                      const next = Math.min(total, Math.max(1, spanOf(widget, total) + step));
-                      replace(widget.id, { ...widget, props: { ...widget.props, span: next } });
-                    }
+                    const total = columns ?? GRID_COLUMNS;
+                    const span = Math.min(total, Math.max(1, spanOf(widget, total) + step));
+                    const rows = Math.min(40, Math.max(1, rowsOf(widget) + vertical));
+                    const cell = cellOf(widget, total, span);
+
+                    // A placed widget grows only into empty cells; an unplaced one is the grid's to
+                    // arrange, and the grid never stacks what it places itself.
+                    if (cell && !isFree(widgets, widget.id, { ...cell, span, rows }, total)) return;
+                    replace(widget.id, { ...widget, props: { ...widget.props, span, rows } });
                   }}
                 />
               )}

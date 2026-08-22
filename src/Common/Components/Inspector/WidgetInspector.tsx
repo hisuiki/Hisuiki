@@ -156,11 +156,12 @@ export default function WidgetInspector({ widget, anchor, variant, title, onChan
   );
 
   // Adds into this container, so the shelf is wherever you are working rather than above the page.
+  // The panel stays open through the drag: closing it on dragstart took the page's width with it,
+  // which moved the board out from under the pointer mid-gesture.
   const widgetsTab = () => (
     <WidgetGallery
       embedded
       onAdd={(kind) => onChange({ ...widget, children: addWidget(widget.children ?? [], kind) })}
-      onDragStart={onClose}
     />
   );
 

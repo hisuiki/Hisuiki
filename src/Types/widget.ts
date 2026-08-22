@@ -62,6 +62,14 @@ export interface Widget {
 
 export type AnchoredLayout = Record<Anchor, Widget[]>;
 
+/** The cells a widget covers: a 1-based grid line, and how many tracks it takes from there. */
+export interface GridArea {
+  col: number;
+  row: number;
+  span: number;
+  rows: number;
+}
+
 /** How an anchor paints itself behind whatever is in it. */
 export type AnchorBackground = "none" | "shadow" | "blur" | "solid";
 

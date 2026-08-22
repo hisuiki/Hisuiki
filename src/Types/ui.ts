@@ -34,8 +34,35 @@ export interface WidgetGalleryProps {
   onAdd: (kind: WidgetKind) => void;
   /** Inside a panel: no collapse bar of its own, since the tab already names it. */
   embedded?: boolean;
-  /** Called when a tile starts being dragged, so a panel can get out of the way. */
-  onDragStart?: () => void;
+}
+
+/** A 1-based grid position, matching CSS grid lines. */
+export interface GridCell {
+  col: number;
+  row: number;
+}
+
+/** A board's grid as the browser resolved it: used track sizes, gaps, and the padding-box origin. */
+export interface GridMetrics {
+  columns: number[];
+  rows: number[];
+  columnGap: number;
+  rowGap: number;
+  originX: number;
+  originY: number;
+}
+
+/** The footprint a resize will land on, in board-relative pixels. */
+export interface ResizePreview {
+  id: string;
+  /** The board's own lines while the corner is held, as two background gradients. */
+  lines: { x: string; y: string };
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  span: number;
+  rows: number;
 }
 
 /** One tab of an Inspector panel. Content is a callback so it is built only when shown. */
