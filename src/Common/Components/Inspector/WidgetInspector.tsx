@@ -11,7 +11,9 @@ import {
   columnsOf,
   gapOf,
   rowHeightOf,
+  SIDES,
   scrollOf,
+  sidesOf,
   slotOf,
 } from "../../../Services/layout";
 import {
@@ -48,16 +50,20 @@ export default function WidgetInspector({ widget, anchor, onChange, onClose }: W
 
   const general = () => (
     <>
-      <Select
-        label={t("inspector.size")}
-        value={widget.size}
-        disabled={spec.sizes.length < 2}
-        options={SIZES.filter((size) => spec.sizes.includes(size)).map((size) => ({
-          value: size as WidgetSize,
-          label: t(`inspector.sizes.${size}`),
-        }))}
-        onChange={(size) => onChange({ ...widget, size })}
-      />
+      {/* A container's own size says nothing: what it holds and the flow it holds them in is what
+          decides how much room it takes. */}
+      {!container && (
+        <Select
+          label={t("inspector.size")}
+          value={widget.size}
+          disabled={spec.sizes.length < 2}
+          options={SIZES.filter((size) => spec.sizes.includes(size)).map((size) => ({
+            value: size as WidgetSize,
+            label: t(`inspector.sizes.${size}`),
+          }))}
+          onChange={(size) => onChange({ ...widget, size })}
+        />
+      )}
 
       {widget.kind === "title" && (
         <>
@@ -205,6 +211,14 @@ export default function WidgetInspector({ widget, anchor, onChange, onClose }: W
       {/* One panel for all five slots: pick the slot, then style that one. */}
       {flow === "anchors" && (
         <>
+          <Select
+            label={t("layout.sides")}
+            value={sidesOf(widget)}
+            options={SIDES.map((value) => ({ value, label: t(`layout.sideModes.${value}`) }))}
+            onChange={(value) => setProp("sides", value)}
+          />
+          <Note>{t(`layout.sideAbout.${sidesOf(widget)}`)}</Note>
+
           <Group label={t("layout.slots")}>
             <SlotPicker
               value={slot}

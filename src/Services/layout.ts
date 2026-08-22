@@ -268,6 +268,18 @@ export const rowHeightOf = (item: Widget): number => {
   return Number.isFinite(n) ? Math.min(240, Math.max(24, n)) : FREE_ROW_HEIGHT;
 };
 
+/**
+ * Whether the side slots run the full height of an anchors board.
+ *
+ * "inset" puts top and bottom across the whole width with the rails between them; "full" gives the
+ * rails the full height instead, and top and bottom sit in the column between.
+ */
+export const SIDES = ["inset", "full"] as const;
+export type Sides = (typeof SIDES)[number];
+
+export const sidesOf = (item: Widget): Sides =>
+  item.props?.sides === "full" ? "full" : "inset";
+
 /** The space between a container's children, in pixels. */
 export const gapOf = (item: Widget): number => {
   const stored = item.props?.gap;

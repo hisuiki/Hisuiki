@@ -17,6 +17,8 @@ export interface WidgetBoardProps {
   rowHeight?: number;
   /** Space between children, in pixels. */
   gap?: number;
+  /** Whether the side slots run the full height of an anchors board. */
+  sides?: "inset" | "full";
   /** Takes an updater as well as a list, so change handlers can be stable. */
   onChange?: (widgets: Widget[] | ((prev: Widget[]) => Widget[])) => void;
 }

@@ -143,10 +143,12 @@ export default function WidgetGallery({ onAdd, embedded, onDragStart }: WidgetGa
 
       {open && (
         <div
-          className="widget-gallery-tooltip"
-          style={{ ["--gallery-arrow-x" as string]: `${arrowX}px` }}
+          className={embedded ? "widget-gallery-body" : "widget-gallery-tooltip"}
+          style={embedded ? undefined : ({ ["--gallery-arrow-x" as string]: `${arrowX}px` } as React.CSSProperties)}
         >
-          <span className="gallery-tooltip-arrow" aria-hidden="true" />
+          {/* The popover's own frame and arrow are the standalone shelf's. Inside a panel they are a
+              second box drawn around the first. */}
+          {!embedded && <span className="gallery-tooltip-arrow" aria-hidden="true" />}
 
           <div className="widget-gallery-search-bar">
             <input

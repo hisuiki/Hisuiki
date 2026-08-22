@@ -18,6 +18,7 @@ import {
   gapOf,
   rowHeightOf,
   scrollOf,
+  sidesOf,
   sizeForSpan,
   slotOf,
   withPlacement,
@@ -84,6 +85,7 @@ export default function WidgetBoard({
   columns,
   rowHeight,
   gap,
+  sides = "inset",
   editing = false,
   anchor,
   containerId,
@@ -457,6 +459,7 @@ export default function WidgetBoard({
         data-flow={flow}
         data-scroll={scroll}
         data-overflow={overflow.overflowing === "none" ? undefined : overflow.overflowing}
+        data-sides={anchored ? sides : undefined}
         // The cell height a free board snaps to, so the CSS and the arithmetic cannot disagree.
         style={
           {
@@ -565,6 +568,7 @@ export default function WidgetBoard({
                   columns={columnsOf(widget)}
                   rowHeight={rowHeightOf(widget)}
                   gap={gapOf(widget)}
+                  sides={sidesOf(widget)}
                   editing={editing}
                   anchor={anchor}
                   containerId={widget.id}

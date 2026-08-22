@@ -298,7 +298,16 @@
       "free": "Widgets are placed on a snapping grid, each keeping its own cell and span.",
       "anchors": "Five slots — top, left, centre, right and bottom. Each widget picks one."
     },
-    "gap": "Gap"
+    "gap": "Gap",
+    "sides": "Side rails",
+    "sideModes": {
+      "inset": "Between top and bottom",
+      "full": "Full height"
+    },
+    "sideAbout": {
+      "inset": "Top and bottom span the page; the rails sit between them.",
+      "full": "The rails run the full height; top and bottom sit in the column between them."
+    }
   },
   "content": {
     "notFoundTitle": "Not found",

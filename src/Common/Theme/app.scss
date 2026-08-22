@@ -1796,3 +1796,30 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   width: clamp(180px, 18vw, 280px);
   padding: 1em;
 }
+
+
+/* Embedded in a panel: no frame of its own, the panel is the frame. */
+.widget-gallery-body { position: relative; }
+.inspector .widget-gallery-search-bar { margin-bottom: 0.6em; }
+
+
+/* Full-height rails: the sides take the whole height and the top and bottom sit in the column
+   between them, rather than spanning the page above and below. */
+.widget-board[data-flow="anchors"][data-sides="full"] {
+  grid-template-areas:
+    "left top center right"
+    "left center center right"
+    "left bottom bottom right";
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+.widget-board[data-flow="anchors"][data-sides="full"] > .widget[data-slot="top"],
+.widget-board[data-flow="anchors"][data-sides="full"] > .widget[data-slot="bottom"],
+.widget-board[data-flow="anchors"][data-sides="full"] > .widget[data-slot="center"] {
+  max-width: none;
+}
+@media screen and (max-width: 900px) {
+  .widget-board[data-flow="anchors"][data-sides="full"] {
+    grid-template-areas: "top" "left" "center" "right" "bottom";
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
