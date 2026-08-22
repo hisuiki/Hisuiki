@@ -1,20 +1,18 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ANCHORS,
   FLOWS,
-  GRID_COLUMNS,
   SCROLLS,
   SIZES,
   WIDGETS,
   flowOf,
   isContainer,
-  placementOf,
+  addWidget,
   columnsOf,
+  gapOf,
   rowHeightOf,
   scrollOf,
   slotOf,
-  withPlacement,
 } from "../../../Services/layout";
 import {
   BORDERS,
@@ -30,6 +28,7 @@ import { ROUTE_KEYS, titleAction } from "../../../Services/titleWidget";
 import type { Anchor, WidgetInspectorProps, WidgetSize, WidgetStyle } from "../../../Types";
 import Inspector from "./Inspector";
 import SlotPicker from "./SlotPicker";
+import WidgetGallery from "../WidgetGallery/WidgetGallery";
 import { Check, Field, Group, Note, Select, Slider, TextField } from "./fields";
 
 export default function WidgetInspector({ widget, anchor, onChange, onClose }: WidgetInspectorProps) {
@@ -138,39 +137,7 @@ export default function WidgetInspector({ widget, anchor, onChange, onClose }: W
         </>
       )}
 
-      {/* Which slot this widget sits in, when its parent lays out in anchors. */}
-      <Select
-        label={t("layout.slot")}
-        value={slotOf(widget)}
-        options={ANCHORS.map((value) => ({ value, label: t(`anchors.${value}`) }))}
-        onChange={(value) => setProp("anchor", value)}
-      />
 
-      <Check
-        label={t("inspector.push")}
-        checked={widget.props?.push === true}
-        onChange={(on) => setProp("push", on)}
-      />
-
-      {/* Cells only mean something on a free board, but the widget cannot see which it is on. */}
-      <Slider
-        label={t("inspector.width")}
-        value={placementOf(widget).w}
-        min={1}
-        max={GRID_COLUMNS}
-        step={1}
-        display={String(placementOf(widget).w)}
-        onChange={(w) => onChange(withPlacement(widget, { ...placementOf(widget), w }))}
-      />
-      <Slider
-        label={t("inspector.height")}
-        value={placementOf(widget).h}
-        min={1}
-        max={12}
-        step={1}
-        display={String(placementOf(widget).h)}
-        onChange={(h) => onChange(withPlacement(widget, { ...placementOf(widget), h }))}
-      />
     </>
   );
 
@@ -197,6 +164,16 @@ export default function WidgetInspector({ widget, anchor, onChange, onClose }: W
         onChange={(value) => setProp("scroll", value)}
       />
       {scrollOf(widget) !== "none" && <Note>{t("inspector.scrollNote")}</Note>}
+
+      <Slider
+        label={t("layout.gap")}
+        value={gapOf(widget)}
+        min={0}
+        max={48}
+        step={1}
+        display={`${gapOf(widget)}px`}
+        onChange={(gap) => setProp("gap", gap)}
+      />
 
       {(flow === "grid" || flow === "free") && (
         <Slider
@@ -276,6 +253,15 @@ export default function WidgetInspector({ widget, anchor, onChange, onClose }: W
         </>
       )}
     </>
+  );
+
+  // Adds into this container, so the shelf is wherever you are working rather than above the page.
+  const widgetsTab = () => (
+    <WidgetGallery
+      embedded
+      onAdd={(kind) => onChange({ ...widget, children: addWidget(widget.children ?? [], kind) })}
+      onDragStart={onClose}
+    />
   );
 
   const customize = () => (
@@ -392,7 +378,12 @@ export default function WidgetInspector({ widget, anchor, onChange, onClose }: W
       onClose={onClose}
       tabs={[
         { id: "general", label: t("inspector.tabs.general"), render: general },
-        ...(container ? [{ id: "layout", label: t("inspector.tabs.layout"), render: layout }] : []),
+        ...(container
+          ? [
+              { id: "layout", label: t("inspector.tabs.layout"), render: layout },
+              { id: "widgets", label: t("inspector.tabs.widgets"), render: widgetsTab, wide: true },
+            ]
+          : []),
         { id: "customize", label: t("inspector.tabs.customize"), render: customize },
         { id: "advanced", label: t("inspector.tabs.advanced"), render: advanced },
       ]}

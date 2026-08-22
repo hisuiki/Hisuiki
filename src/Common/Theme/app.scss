@@ -715,7 +715,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    One component lays out the header bar, the footer, a sidebar and a profile body; what differs is
    only the flow it was given. A container passes its own flow down to the board inside it. */
 .widget-board { position: relative; min-width: 0; }
-.widget-board[data-flow="grid"] { display: grid; grid-template-columns: repeat(var(--grid-columns, 4), 1fr); gap: 1.2em; align-items: start; }
+.widget-board[data-flow="grid"] { display: grid; grid-template-columns: repeat(var(--grid-columns, 4), 1fr); gap: var(--board-gap, 1.2em); align-items: start; }
 /* A single line that neither wraps nor clips. Nothing here may set overflow: a corner badge, a
    dropdown and the edit-mode dance all reach outside their widget's own box, and a scroller would
    cut every one of them off — setting overflow-x alone computes overflow-y to auto as well. */
@@ -725,7 +725,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   flex-wrap: nowrap;
   align-items: baseline;
   /* Scales with the row, so the space between items closes as the items themselves shrink. */
-  gap: calc(2.4em * var(--row-fit, 1));
+  gap: calc(var(--board-gap, 2.4em) * var(--row-fit, 1));
   min-width: 0;
 }
 .widget-board[data-flow="wrap"] {
@@ -733,9 +733,9 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   flex-direction: row;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.2em 2.4em;
+  gap: 0.2em var(--board-gap, 2.4em);
 }
-.widget-board[data-flow="column"] { display: flex; flex-direction: column; gap: 1.2em; align-items: stretch; }
+.widget-board[data-flow="column"] { display: flex; flex-direction: column; gap: var(--board-gap, 1.2em); align-items: stretch; }
 
 /* A free board: the same four columns, but a widget names the cell it starts in as well as how many
    it spans. Rows are a fixed height so that a cell has two known dimensions to snap to — columns
@@ -1160,7 +1160,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    is why it sets no `position` of its own — see the note on the account menu. */
 .inspector {
   z-index: 1300;
-  width: min(320px, calc(100vw - 2em));
+  width: min(360px, calc(100vw - 2em));
+  transition: width 0.15s ease-in-out;
   background: var(--color-surface);
   border: 2px solid var(--color-accent);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
@@ -1171,6 +1172,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   text-shadow: none;
   text-transform: none;
 }
+/* A tab that needs the room gets it, rather than every panel being sized for the widest one. */
+.inspector.is-wide { width: min(560px, calc(100vw - 2em)); }
 .inspector-body {
   display: flex;
   flex-direction: column;
@@ -1189,9 +1192,17 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .inspector-close:hover { color: #ffffff; }
 
-.inspector-tabs { display: flex; border-bottom: 1px solid var(--color-accent-soft); }
+.inspector-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--color-accent-soft);
+}
 .inspector-tab {
-  flex: 1 1 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   background: none; border: none; border-bottom: 2px solid transparent;
   color: var(--color-text-secondary); font: inherit; font-size: 0.85rem;
   padding: 0.55em 0.4em; cursor: pointer;
@@ -1200,7 +1211,10 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .inspector-tab:hover { color: #ffffff; }
 .inspector-tab.is-active { color: #ffffff; border-bottom-color: var(--color-accent); }
 
-.inspector-panel { display: flex; flex-direction: column; gap: 0.9em; padding: 0.9em; }
+.inspector-panel { display: flex; flex-direction: column; gap: 0.9em; padding: 0.9em; min-width: 0; }
+.inspector-panel select,
+.inspector-panel input,
+.inspector-panel textarea { max-width: 100%; }
 .inspector-field { display: flex; flex-direction: column; gap: 0.35em; }
 .inspector-field > span {
   display: flex; align-items: baseline; justify-content: space-between; gap: 0.5em;
@@ -1668,7 +1682,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
     "bottom bottom bottom";
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 0;
+  gap: var(--board-gap, 0px);
   min-height: 100vh;
   align-items: start;
 }
@@ -1733,4 +1747,52 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   background: var(--color-accent);
   border-color: var(--color-accent-strong);
   color: #ffffff;
+}
+
+
+/* The page's own settings: one button, top right, for the container everything is inside. */
+.board-settings {
+  position: fixed;
+  top: 0.8em;
+  right: 0.8em;
+  z-index: 1200;
+  width: 2.2em;
+  height: 2.2em;
+  padding: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+  text-shadow: none;
+  cursor: pointer;
+  transition: background 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+.board-settings:hover { background: var(--color-accent); color: #ffffff; }
+
+
+/* The shelf inside the panel: narrower tiles, and no heading of its own since the tab names it. */
+.inspector .widget-gallery { margin-bottom: 0; }
+.inspector .widget-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+.inspector .widget-card { height: 120px; }
+.inspector .widget-card-name { font-size: 0.7rem; }
+.inspector .widget-gallery-bar { margin-bottom: 0.6em; }
+
+
+/* The reading column, which used to be a wrapper element and is now a property of the slot. The
+   backdrop behind a slot still spans the page; only its contents are held in. */
+.widget-board[data-flow="anchors"] > .widget[data-slot="top"],
+.widget-board[data-flow="anchors"] > .widget[data-slot="center"],
+.widget-board[data-flow="anchors"] > .widget[data-slot="bottom"] {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: clamp(1em, 7.5vw, 5em);
+}
+.widget-board[data-flow="anchors"] > .widget[data-slot="top"] { padding-block: 2em 0.6em; }
+.widget-board[data-flow="anchors"] > .widget[data-slot="bottom"] { padding-block: 0.6em 1.2em; }
+.widget-board[data-flow="anchors"] > .widget[data-slot="left"],
+.widget-board[data-flow="anchors"] > .widget[data-slot="right"] {
+  width: clamp(180px, 18vw, 280px);
+  padding: 1em;
 }

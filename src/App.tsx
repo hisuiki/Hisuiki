@@ -2,13 +2,12 @@ import { useEffect } from "react";
 import AppModal from "./Common/Components/AppModal/AppModal";
 import SaveIndicator from "./Common/Components/SaveIndicator/SaveIndicator";
 import Wallpaper from "./Common/Components/Wallpaper/Wallpaper";
-import WidgetGallery from "./Common/Components/WidgetGallery/WidgetGallery";
+import BoardSettings from "./Common/Components/BoardSettings/BoardSettings";
 import { AuthProvider } from "./Services/auth";
 import { PageLayoutProvider, usePageLayout } from "./Services/pageLayout";
-import { addWidget, columnsOf, flowOf, rowHeightOf, scrollOf } from "./Services/layout";
+import { columnsOf, flowOf, rowHeightOf, scrollOf } from "./Services/layout";
 import WidgetBoard from "./Common/Components/WidgetBoard/WidgetBoard";
 import PageScope from "./Common/Components/PageScope/PageScope";
-import type { WidgetKind } from "./Types";
 import { setLanguage } from "./Services/i18n";
 import { ExternalLinkProvider } from "./Services/externalLink";
 import { RouterProvider, resolveRoute, useRouter } from "./Services/router";
@@ -69,16 +68,9 @@ function Shell() {
     <>
       <Wallpaper />
 
-      {editing && (
-        <div className="page-rail page-gallery">
-          <WidgetGallery
-            onAdd={(kind: WidgetKind) =>
-              setRoot((prev) => ({ ...prev, children: addWidget(prev.children ?? [], kind) }))
-            }
-          />
-          <SaveIndicator />
-        </div>
-      )}
+      {editing && <BoardSettings />}
+
+      {editing && <SaveIndicator />}
 
       <div className={isProfileSite ? "profile-custom page-root" : "page-root"}>
         <WidgetBoard

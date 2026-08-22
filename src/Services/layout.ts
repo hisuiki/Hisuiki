@@ -268,6 +268,13 @@ export const rowHeightOf = (item: Widget): number => {
   return Number.isFinite(n) ? Math.min(240, Math.max(24, n)) : FREE_ROW_HEIGHT;
 };
 
+/** The space between a container's children, in pixels. */
+export const gapOf = (item: Widget): number => {
+  const stored = item.props?.gap;
+  const n = typeof stored === "number" ? Math.round(stored) : 12;
+  return Number.isFinite(n) ? Math.min(48, Math.max(0, n)) : 12;
+};
+
 /** Which slot a child sits in, for a container laying out in anchors. */
 export const slotOf = (item: Widget): Anchor => {
   const stored = item.props?.anchor;
@@ -322,7 +329,20 @@ export function defaultAnchors(): AnchoredLayout {
       }),
     ],
     left: [],
-    center: [make("content", { size: "large", props: { anchor: "center" } })],
+    center: [
+      make("container", {
+        size: "large",
+        props: { flow: "grid", anchor: "center", columns: 4 },
+        children: [
+          make("content", { size: "large" }),
+          make("identity", { size: "large" }),
+          make("links", { size: "medium" }),
+          make("bio", { size: "large" }),
+          make("heatmap", { size: "large" }),
+          make("timeline", { size: "large" }),
+        ],
+      }),
+    ],
     right: [],
     bottom: [
       make("container", {

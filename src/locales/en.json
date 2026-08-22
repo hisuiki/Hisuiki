@@ -103,6 +103,10 @@
     "title": {
       "label": "Title",
       "description": "A word that goes somewhere: one of the app's pages, a path, or a link of your own."
+    },
+    "content": {
+      "label": "Page content",
+      "description": "Whatever the current page shows — the feed, a profile, settings."
     }
   },
   "text": {
@@ -145,7 +149,8 @@
       "general": "General",
       "customize": "Customize",
       "advanced": "Advanced",
-      "layout": "Layout"
+      "layout": "Layout",
+      "widgets": "Widgets"
     },
     "size": "Size",
     "sizes": {
@@ -154,7 +159,6 @@
       "large": "Large"
     },
     "target": "Page",
-    "push": "Push to the end of the bar",
     "blur": "Blur",
     "opacity": "Background",
     "border": "Border",
@@ -186,9 +190,7 @@
     "font": "Font",
     "fontSample": "The quick brown fox jumps over the lazy dog",
     "custom": "Custom colour",
-    "inherited": "inherited",
-    "width": "Width (cells)",
-    "height": "Height (cells)"
+    "inherited": "inherited"
   },
   "webamp": {
     "untitled": "Untitled",
@@ -283,7 +285,6 @@
     "scrollable": "Scrolling is on, so the rest can be reached — but anything reaching outside a scrolling container is clipped on both axes."
   },
   "layout": {
-    "slot": "Slot",
     "slots": "Slot styling",
     "columns": "Columns",
     "snap": "Snap height",
@@ -296,6 +297,11 @@
       "grid": "Even columns. Each widget spans a whole number of them.",
       "free": "Widgets are placed on a snapping grid, each keeping its own cell and span.",
       "anchors": "Five slots — top, left, centre, right and bottom. Each widget picks one."
-    }
+    },
+    "gap": "Gap"
+  },
+  "content": {
+    "notFoundTitle": "Not found",
+    "notFound": "Sorry, the content you are looking for does not exist."
   }
 }

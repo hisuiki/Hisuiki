@@ -6,7 +6,8 @@ import globals from "globals";
 
 export default tseslint.config(
   {
-    ignores: ["dist", "build", "node_modules", "server/dist"],
+    // scripts/ runs under node, not in the browser, and is not part of the app bundle.
+    ignores: ["dist", "build", "node_modules", "server/dist", "scripts"],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

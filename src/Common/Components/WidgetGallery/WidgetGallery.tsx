@@ -35,7 +35,7 @@ function sample(kind: WidgetKind, t: (key: string) => string): Widget {
  * The shelf a page is built from. Each tile is the real widget, filled with this profile's own
  * content where it has any, and dragged onto whichever anchor it should live at.
  */
-export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
+export default function WidgetGallery({ onAdd, embedded, onDragStart }: WidgetGalleryProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [confirming, setConfirming] = useState<WidgetKind | null>(null);
@@ -43,13 +43,16 @@ export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const [arrowX, setArrowX] = useState<number>(36);
 
-  const [open, setOpen] = useState(() => {
+  const [collapsed, setCollapsed] = useState(() => {
     try {
-      return window.localStorage.getItem(STORAGE_KEY) !== "false";
+      return !embedded && window.localStorage.getItem(STORAGE_KEY) === "false";
     } catch {
-      return true;
+      return false;
     }
   });
+
+  // Embedded in a panel it is always open: the tab that reveals it is the toggle.
+  const open = embedded || !collapsed;
 
   useLayoutEffect(() => {
     if (!open || !toggleBtnRef.current) return;
@@ -105,7 +108,7 @@ export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
 
   const toggle = () => {
     const next = !open;
-    setOpen(next);
+    setCollapsed(!next);
     try {
       window.localStorage.setItem(STORAGE_KEY, String(next));
     } catch {
@@ -123,18 +126,20 @@ export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
 
   return (
     <section className="widget-gallery" aria-label={t("gallery.title")}>
-      <div className="widget-gallery-bar">
-        <button
-          type="button"
-          ref={toggleBtnRef}
-          className="widget-gallery-toggle"
-          aria-expanded={open}
-          onClick={toggle}
-        >
-          <span className="widget-gallery-caret" aria-hidden="true">{open ? "▾" : "▸"}</span>
-          {t("gallery.title")}
-        </button>
-      </div>
+      {!embedded && (
+        <div className="widget-gallery-bar">
+          <button
+            type="button"
+            ref={toggleBtnRef}
+            className="widget-gallery-toggle"
+            aria-expanded={open}
+            onClick={toggle}
+          >
+            <span className="widget-gallery-caret" aria-hidden="true">{open ? "▾" : "▸"}</span>
+            {t("gallery.title")}
+          </button>
+        </div>
+      )}
 
       {open && (
         <div
@@ -182,6 +187,9 @@ export default function WidgetGallery({ onAdd }: WidgetGalleryProps) {
                           e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ id, kind }));
                           e.dataTransfer.effectAllowed = "copy";
                           announceDrag({ id, kind });
+                          // The panel would otherwise cover the page being dropped onto. The drag
+                          // survives it: once started, the browser owns the gesture.
+                          onDragStart?.();
                         }}
                         onDragEnd={() => {
                           cancelPreview();

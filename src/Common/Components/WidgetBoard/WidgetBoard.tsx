@@ -15,6 +15,7 @@ import {
   placementOf,
   removeWidget,
   columnsOf,
+  gapOf,
   rowHeightOf,
   scrollOf,
   sizeForSpan,
@@ -82,6 +83,7 @@ export default function WidgetBoard({
   slots,
   columns,
   rowHeight,
+  gap,
   editing = false,
   anchor,
   containerId,
@@ -460,6 +462,7 @@ export default function WidgetBoard({
           {
             ...(free ? { "--free-row": `${rowHeight ?? FREE_ROW_HEIGHT}px` } : {}),
             ...(flow === "grid" || free ? { "--grid-columns": String(columns ?? GRID_COLUMNS) } : {}),
+            ...(gap === undefined ? {} : { "--board-gap": `${gap}px` }),
           } as React.CSSProperties
         }
         onPointerDown={startLasso}
@@ -538,6 +541,12 @@ export default function WidgetBoard({
             );
           })}
 
+        {/* Inside the board, because it is positioned against it. Always present while arranging so
+            the first sight of it does not wait for a render. */}
+        {editing && (
+          <div className="widget-lasso" aria-hidden="true" ref={band} style={{ display: "none" }} />
+        )}
+
         {editing && widgets.length === 0 && <EmptyBoard />}
 
         {widgets.map((widget) => {
@@ -555,6 +564,7 @@ export default function WidgetBoard({
                   slots={widget.slots}
                   columns={columnsOf(widget)}
                   rowHeight={rowHeightOf(widget)}
+                  gap={gapOf(widget)}
                   editing={editing}
                   anchor={anchor}
                   containerId={widget.id}
@@ -595,6 +605,9 @@ export default function WidgetBoard({
                 ...styleVariables(style),
               }}
               data-widget={widget.kind}
+              // Which slot it sits in, so the stylesheet can hold the page to a reading width
+              // without the slot's own background stopping at the same edge.
+              data-slot={anchored ? slotOf(widget) : undefined}
               // What the server scopes this widget's own stylesheet to. Must match widgetScope() in
               // server/services/layoutCss.ts, or a widget's CSS lands on nothing.
               data-widget-id={widget.id}
@@ -816,12 +829,6 @@ export default function WidgetBoard({
 
       {overflow.overflowing !== "none" && (
         <OverflowWarning axis={overflow.overflowing} scrollable={scroll !== "none"} />
-      )}
-
-      {/* Always in the document while arranging, hidden until drawn. Mounting it on pointerdown
-          would put a render between the press and the first sight of it. */}
-      {editing && (
-        <div className="widget-lasso" aria-hidden="true" ref={band} style={{ display: "none" }} />
       )}
 
       {menu !== null && (() => {

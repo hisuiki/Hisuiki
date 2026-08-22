@@ -15,7 +15,7 @@ export default function Inspector({
   const shown = tabs.find((tab) => tab.id === active) ?? tabs[0];
 
   return (
-    <Anchored anchor={anchor} align={align} className="inspector" gap={8}>
+    <Anchored anchor={anchor} align={align} className={`inspector ${shown?.wide ? "is-wide" : ""}`.trim()} gap={8}>
       <div role="dialog" aria-label={title} className="inspector-body">
         <header className="inspector-head">
           <h2 className="inspector-title">

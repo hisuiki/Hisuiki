@@ -118,7 +118,10 @@ export default function Settings() {
                 setHandle(e.target.value);
                 setSaved(false);
               }}
-              pattern="^[a-z0-9-]+$"
+              // The dash is escaped because browsers compile this with the `v` flag now, under which
+              // a bare dash is reserved anywhere in a character class — not only at the end. Left
+              // unescaped the pattern never compiles and the field validates nothing.
+              pattern="^[a-z0-9\-]+$"
               title={t("settings.handleHint")}
               minLength={3}
               maxLength={30}

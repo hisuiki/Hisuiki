@@ -15,6 +15,8 @@ export interface WidgetBoardProps {
   /** Columns for a grid flow, cell height for a free one. */
   columns?: number;
   rowHeight?: number;
+  /** Space between children, in pixels. */
+  gap?: number;
   /** Takes an updater as well as a list, so change handlers can be stable. */
   onChange?: (widgets: Widget[] | ((prev: Widget[]) => Widget[])) => void;
 }
@@ -28,6 +30,10 @@ export interface AnchorRegionProps {
 
 export interface WidgetGalleryProps {
   onAdd: (kind: WidgetKind) => void;
+  /** Inside a panel: no collapse bar of its own, since the tab already names it. */
+  embedded?: boolean;
+  /** Called when a tile starts being dragged, so a panel can get out of the way. */
+  onDragStart?: () => void;
 }
 
 /** One tab of an Inspector panel. Content is a callback so it is built only when shown. */
@@ -35,6 +41,8 @@ export interface InspectorTab {
   id: string;
   label: string;
   render: () => ReactNode;
+  /** Widens the panel while this tab is showing, for content that needs the room. */
+  wide?: boolean;
 }
 
 export interface InspectorProps {
