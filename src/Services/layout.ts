@@ -75,7 +75,10 @@ interface WidgetSpec {
    */
   confirmRemove: boolean;
   defaultSize: WidgetSize;
-  /** Sizes that make sense — a timeline at one column is unreadable. */
+  /**
+   * Sizes this widget offers. Every kind offers all three: what a widget is worth spanning is its
+   * owner's judgement, and the span is what builds the layout.
+   */
   sizes: WidgetSize[];
   /** Containers hold other widgets; everything else is a leaf. */
   container?: boolean;
@@ -107,7 +110,7 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     minPreview: { w: 240, h: 140 },
     confirmRemove: true,
     defaultSize: "large",
-    sizes: ["large"],
+    sizes: ["small", "medium", "large"],
   },
   title: {
     label: { en: "Title", ja: "タイトル" },
@@ -117,14 +120,14 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     },
     confirmRemove: false,
     defaultSize: "small",
-    sizes: ["small"],
+    sizes: ["small", "medium", "large"],
   },
   account: {
     label: { en: "Account", ja: "アカウント" },
     description: { en: "Your avatar, and the menu behind it.", ja: "アバターとメニュー。" },
     confirmRemove: true,
     defaultSize: "small",
-    sizes: ["small"],
+    sizes: ["small", "medium", "large"],
   },
   brand: {
     label: { en: "Brand", ja: "ブランド" },
@@ -132,7 +135,7 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     minPreview: { w: 170, h: 60 },
     confirmRemove: true,
     defaultSize: "small",
-    sizes: ["small", "medium"],
+    sizes: ["small", "medium", "large"],
   },
   colophon: {
     label: { en: "Colophon", ja: "奥付" },
@@ -151,7 +154,7 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     minPreview: { w: 250, h: 130 },
     confirmRemove: true,
     defaultSize: "large",
-    sizes: ["medium", "large"],
+    sizes: ["small", "medium", "large"],
   },
   links: {
     label: { en: "Links", ja: "リンク集" },
@@ -165,7 +168,7 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     description: { en: "Your README post, shown as the bio.", ja: "READMEの投稿を自己紹介として表示。" },
     confirmRemove: true,
     defaultSize: "large",
-    sizes: ["medium", "large"],
+    sizes: ["small", "medium", "large"],
   },
   heatmap: {
     label: { en: "Activity", ja: "アクティビティ" },
@@ -174,7 +177,7 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     confirmRemove: true,
     // The grid is 53 columns wide; anything narrower than full width just scrolls awkwardly.
     defaultSize: "large",
-    sizes: ["large"],
+    sizes: ["small", "medium", "large"],
   },
   timeline: {
     label: { en: "Posts and media", ja: "投稿とメディア" },
@@ -182,7 +185,7 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     minPreview: { w: 260, h: 190 },
     confirmRemove: true,
     defaultSize: "large",
-    sizes: ["large"],
+    sizes: ["small", "medium", "large"],
   },
   spacer: {
     label: { en: "Spacer", ja: "スペーサー" },
@@ -204,7 +207,7 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     confirmRemove: true,
     // The main window is a fixed 275px wide, so anything under two columns crops it.
     defaultSize: "medium",
-    sizes: ["medium", "large"],
+    sizes: ["small", "medium", "large"],
   },
   text: {
     label: { en: "Text", ja: "テキスト" },

@@ -1613,7 +1613,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .inspector.is-sidebar .inspector-body { max-height: 100%; flex: 1; }
 /* The gear sits under it once it is open, so it moves aside. */
-.inspector.is-sidebar ~ .board-settings,
 /* The gear would otherwise sit under the sidebar; it is hidden while the sidebar has its own. */
 body:has(.inspector.is-sidebar) .board-settings { display: none; }
 
@@ -1672,3 +1671,49 @@ body:has(.inspector.is-sidebar) .board-settings { display: none; }
   margin-inline: auto;
   padding: 2em clamp(1em, 7.5vw, 5em);
 }
+
+
+/* The page's own settings: one button, top right, opening the page inspector. Its styling was lost
+   when the anchor rules around it were removed, which left it an unstyled inline button stretched
+   across the top of the page. */
+.board-settings {
+  position: fixed;
+  top: 0.8em;
+  right: 0.8em;
+  z-index: 1200;
+  width: 2.2em;
+  height: 2.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+  text-shadow: none;
+  cursor: pointer;
+  transition: background 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+.board-settings:hover { background: var(--color-accent); color: #ffffff; }
+/* Hidden only while the sidebar it opens is showing, which carries its own close. */
+body:has(.inspector.is-sidebar) .board-settings { display: none; }
+
+
+/* Nothing eases while the sidebar is being dragged wider: a transition toward a value that changes
+   every frame is exactly what makes a drag feel choppy. */
+.is-resizing-inspector .inspector,
+.is-resizing-inspector #app {
+  transition: none;
+}
+
+
+/* The tile's drag surface: over the inert preview, under the footer button that takes the click. */
+.widget-card-drag {
+  position: absolute;
+  inset: 0 0 2.4em 0;
+  z-index: 1;
+  cursor: grab;
+}
+.widget-card-button { z-index: 2; }

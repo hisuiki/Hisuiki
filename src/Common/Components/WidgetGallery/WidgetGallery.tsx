@@ -209,6 +209,10 @@ export default function WidgetGallery({ onAdd, embedded, onDragStart }: WidgetGa
                       onDragEnd={() => cancelPreview()}
                     >
                       {/* inert: a preview holds real links and real buttons. */}
+                      {/* Takes the press, because the preview below is inert and inert subtrees are
+                          not hit-tested — which is why dragging a tile did nothing at all. */}
+                      <span className="widget-card-drag" aria-hidden="true" />
+
                       <div className="widget-card-preview" inert aria-hidden="true">
                         {cramped ? (
                           <WidgetIcon kind={kind} />

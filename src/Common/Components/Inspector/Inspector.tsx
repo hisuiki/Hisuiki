@@ -37,11 +37,12 @@ export default function Inspector({
   // Published so the page can make room for it. An inspector that covers what it inspects is not
   // much of one.
   useLayoutEffect(() => {
-    if (variant !== "sidebar") return;
+    if (variant !== "sidebar") return () => document.documentElement.classList.remove("is-resizing-inspector");
     const root = document.documentElement;
     root.style.setProperty("--inspector-width", `${width}px`);
     return () => {
       root.style.removeProperty("--inspector-width");
+      root.classList.remove("is-resizing-inspector");
     };
   }, [variant, width]);
   const shown = tabs.find((tab) => tab.id === active) ?? tabs[0];
@@ -94,6 +95,9 @@ export default function Inspector({
             e.preventDefault();
             e.currentTarget.setPointerCapture(e.pointerId);
             dragging.current = true;
+            // The panel and the page both ease their width. Easing toward a value that changes every
+            // frame is what makes a drag feel like it is lagging behind the pointer.
+            document.documentElement.classList.add("is-resizing-inspector");
           }}
           onPointerMove={(e) => {
             if (!dragging.current || !sidebar.current) return;
@@ -103,6 +107,7 @@ export default function Inspector({
           }}
           onPointerUp={(e) => {
             dragging.current = false;
+            document.documentElement.classList.remove("is-resizing-inspector");
             e.currentTarget.releasePointerCapture(e.pointerId);
             const next = sidebar.current?.offsetWidth;
             if (next) {
