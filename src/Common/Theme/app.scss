@@ -716,39 +716,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    only the flow it was given. A container passes its own flow down to the board inside it. */
 .widget-board { position: relative; min-width: 0; }
 .widget-board[data-flow="grid"] { display: grid; grid-template-columns: repeat(var(--grid-columns, 4), 1fr); gap: var(--board-gap, 1.2em); align-items: start; }
-/* A single line that neither wraps nor clips. Nothing here may set overflow: a corner badge, a
-   dropdown and the edit-mode dance all reach outside their widget's own box, and a scroller would
-   cut every one of them off — setting overflow-x alone computes overflow-y to auto as well. */
-.widget-board[data-flow="row"] {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: baseline;
-  /* Scales with the row, so the space between items closes as the items themselves shrink. */
-  gap: calc(var(--board-gap, 2.4em) * var(--row-fit, 1));
-  min-width: 0;
-}
-.widget-board[data-flow="wrap"] {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.2em var(--board-gap, 2.4em);
-}
-.widget-board[data-flow="column"] { display: flex; flex-direction: column; gap: var(--board-gap, 1.2em); align-items: stretch; }
-
-/* A free board: the same four columns, but a widget names the cell it starts in as well as how many
-   it spans. Rows are a fixed height so that a cell has two known dimensions to snap to — columns
-   still reflow with the board, so a layout composed on a desktop narrows rather than scrambling. */
-.widget-board[data-flow="free"] {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(var(--grid-columns, 4), 1fr);
-  grid-auto-rows: var(--free-row, 72px);
-  gap: 0;
-  align-items: stretch;
-  min-height: calc(var(--free-row, 72px) * 4);
-}
 
 /* The grid, drawn only while a corner is being pulled. It exists to be aimed at: a size that snaps
    without showing what it is snapping to just looks like it is fighting you. */
@@ -797,25 +764,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .widget-board[data-scroll="inline"] { overflow-x: auto; overscroll-behavior-x: contain; }
 .widget-board[data-scroll="block"] { overflow-y: auto; max-height: 100%; overscroll-behavior-y: contain; }
 .widget-board[data-scroll="both"] { overflow: auto; overscroll-behavior: contain; }
-
-/* Takes the slack at the end of a bar. This is how the account tile ends up at the far right without
-   being pinned there — it is an ordinary widget, and dragging it inward makes it sit inline. */
-.widget-board[data-flow="row"] > .widget[data-push],
-.widget-board[data-flow="wrap"] > .widget[data-push] { margin-left: auto; }
-/* A square tile baseline-aligned against 3.6rem labels would hang far too low. */
-.widget-board[data-flow="row"] > .widget[data-widget="account"],
-.widget-board[data-flow="wrap"] > .widget[data-widget="account"] { align-self: center; }
-
-/* A bar's widgets are chrome, not panels: no ground of their own, nothing that would stop the strip
-   looking like a strip. */
-.widget-board[data-flow="row"] > .widget,
-.widget-board[data-flow="wrap"] > .widget {
-  flex: 0 0 auto;
-  min-width: 0;
-  background: transparent;
-  backdrop-filter: none;
-  padding: 0;
-}
 
 /* ── Anchors ──────────────────────────────────────────────────────────
    The five positions. What is at the top is a header because it is at the top, and for no other
@@ -1118,13 +1066,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    page off whatever is scrolling underneath it. */
 .widget[data-shadow="soft"] { box-shadow: 0 8px 28px rgba(0, 0, 0, 0.38); }
 .widget[data-shadow="hard"] { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.55); }
-
-/* A bar's widgets are chrome and carry no ground of their own, so the frosting has to come off them
-   too — but a shadow or border set deliberately in the Inspector still applies. */
-.widget-board[data-flow="row"] > .widget:not([data-border]):not([data-shadow]),
-.widget-board[data-flow="wrap"] > .widget:not([data-border]):not([data-shadow]) {
-  background: transparent;
-}
 
 /* The widget currently open in the Inspector, so there is no doubt which one the panel is about. */
 .widget[data-inspecting] { outline: 2px solid var(--color-accent-strong); outline-offset: 4px; }
@@ -1519,19 +1460,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   border: 1px dashed rgba(255, 255, 255, 0.18);
 }
 
-/* The middle band: optional rails either side of whatever the route renders. */
-.page-middle { display: flex; align-items: stretch; min-width: 0; flex: 1; }
-.page-middle > .profile-custom,
-.page-middle > main { flex: 1 1 auto; min-width: 0; }
-.page-side { flex: 0 0 auto; width: clamp(180px, 18vw, 280px); padding: 1em; }
-@media screen and (max-width: 900px) {
-  /* Left and right side anchors are systematically hidden/disabled on mobile ratio */
-  .page-side,
-  .anchor-region[data-anchor="left"],
-  .anchor-region[data-anchor="right"] {
-    display: none !important;
-  }
-}
 
 /* ── Drop guides ───────────────────────────────────────────────────────
    Every anchor that could take the widget says so while it is in the air. */
@@ -1650,7 +1578,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .empty-board-hint { margin: 0; font-size: 0.78rem; }
 /* A row lays its children out side by side; the placeholder is the only one and should fill it. */
 .widget-board[data-flow="row"] .empty-board,
-.widget-board[data-flow="wrap"] .empty-board { flex: 1 1 auto; padding: 0.8em; }
 
 /* A disabled anchor while arranging: just enough to find its settings again. */
 .anchor-region.is-disabled {
@@ -1669,175 +1596,6 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
-
-
-/* ── Anchors layout ────────────────────────────────────────────────────
-   Five named slots on one board, replacing the five separate regions. A widget picks its slot; the
-   slot itself can be styled without being a component of its own. */
-.widget-board[data-flow="anchors"] {
-  display: grid;
-  grid-template-areas:
-    "top top top"
-    "left center right"
-    "bottom bottom bottom";
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: var(--board-gap, 0px);
-  min-height: 100vh;
-  align-items: start;
-}
-.widget-board[data-flow="anchors"] > .widget { min-width: 0; }
-
-/* Painted behind a slot rather than by it: the slot is a position, not a widget. */
-.board-slot {
-  z-index: 0;
-  pointer-events: none;
-  background: rgba(16, 12, 48, var(--widget-veil-alpha, 0));
-  backdrop-filter: var(--widget-backdrop, none);
-}
-.board-slot[data-border="hairline"] { border: 1px solid rgba(255, 255, 255, 0.18); }
-.board-slot[data-border="solid"] { border: 2px solid rgba(255, 255, 255, 0.35); }
-.board-slot[data-border="accent"] { border: 2px solid var(--color-accent); }
-.board-slot[data-shadow="soft"] { box-shadow: 0 8px 28px rgba(0, 0, 0, 0.38); }
-.board-slot[data-shadow="hard"] { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.55); }
-.widget-board[data-flow="anchors"] > .widget { position: relative; z-index: 1; }
-
-@media screen and (max-width: 900px) {
-  /* The rails stack rather than squeezing the middle to nothing. */
-  .widget-board[data-flow="anchors"] {
-    grid-template-areas: "top" "left" "center" "right" "bottom";
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto;
-  }
-}
-
-
-/* ── Slot picker ───────────────────────────────────────────────────────
-   The five slots drawn where they sit, so choosing one is pointing at it. */
-.slot-picker {
-  display: grid;
-  grid-template-areas:
-    "top top top"
-    "left center right"
-    "bottom bottom bottom";
-  grid-template-columns: 1fr 1.4fr 1fr;
-  gap: 3px;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-}
-.slot-picker-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.2em;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-text-faint);
-  color: var(--color-text-muted);
-  font: inherit;
-  font-size: 0.62rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
-}
-.slot-picker-cell:hover { border-color: var(--color-accent-strong); color: var(--color-text); }
-/* A slot holding something reads differently from an empty one. */
-.slot-picker-cell[data-filled] { background: rgba(255, 255, 255, 0.12); color: var(--color-text-secondary); }
-.slot-picker-cell.is-active {
-  background: var(--color-accent);
-  border-color: var(--color-accent-strong);
-  color: #ffffff;
-}
-
-
-/* The page's own settings: one button, top right, for the container everything is inside. */
-.board-settings {
-  position: fixed;
-  top: 0.8em;
-  right: 0.8em;
-  z-index: 1200;
-  width: 2.2em;
-  height: 2.2em;
-  padding: 0;
-  background: var(--color-surface);
-  border: 1px solid var(--color-accent);
-  color: var(--color-text-secondary);
-  font-size: 1rem;
-  line-height: 1;
-  text-shadow: none;
-  cursor: pointer;
-  transition: background 0.15s ease-in-out, color 0.15s ease-in-out;
-}
-.board-settings:hover { background: var(--color-accent); color: #ffffff; }
-
-
-/* The shelf inside the panel: narrower tiles, and no heading of its own since the tab names it. */
-.inspector .widget-gallery { margin-bottom: 0; }
-.inspector .widget-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
-.inspector .widget-card { height: 120px; }
-.inspector .widget-card-name { font-size: 0.7rem; }
-.inspector .widget-gallery-bar { margin-bottom: 0.6em; }
-
-
-/* The reading column, which used to be a wrapper element and is now a property of the slot. The
-   backdrop behind a slot still spans the page; only its contents are held in. */
-.widget-board[data-flow="anchors"] > .widget[data-slot="top"],
-.widget-board[data-flow="anchors"] > .widget[data-slot="center"],
-.widget-board[data-flow="anchors"] > .widget[data-slot="bottom"] {
-  width: 100%;
-  max-width: 1200px;
-  margin-inline: auto;
-  padding-inline: clamp(1em, 7.5vw, 5em);
-}
-.widget-board[data-flow="anchors"] > .widget[data-slot="top"] { padding-block: 2em 0.6em; }
-.widget-board[data-flow="anchors"] > .widget[data-slot="bottom"] { padding-block: 0.6em 1.2em; }
-.widget-board[data-flow="anchors"] > .widget[data-slot="left"],
-.widget-board[data-flow="anchors"] > .widget[data-slot="right"] {
-  width: clamp(180px, 18vw, 280px);
-  padding: 1em;
-}
-
-
-/* Embedded in a panel: no frame of its own, the panel is the frame. */
-.widget-gallery-body { position: relative; }
-.inspector .widget-gallery-search-bar { margin-bottom: 0.6em; }
-
-
-/* Full-height rails: the sides take the whole height and the top and bottom sit in the column
-   between them, rather than spanning the page above and below. */
-.widget-board[data-flow="anchors"][data-sides="full"] {
-  grid-template-areas:
-    "left top center right"
-    "left center center right"
-    "left bottom bottom right";
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
-}
-.widget-board[data-flow="anchors"][data-sides="full"] > .widget[data-slot="top"],
-.widget-board[data-flow="anchors"][data-sides="full"] > .widget[data-slot="bottom"],
-.widget-board[data-flow="anchors"][data-sides="full"] > .widget[data-slot="center"] {
-  max-width: none;
-}
-@media screen and (max-width: 900px) {
-  .widget-board[data-flow="anchors"][data-sides="full"] {
-    grid-template-areas: "top" "left" "center" "right" "bottom";
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-
-/* The mark shown in place of a preview that would only be a cropped corner. */
-.widget-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  min-height: 4em;
-  color: var(--color-text-muted);
-}
-.widget-icon svg { width: 2.6em; height: 2.6em; }
-.widget-card:hover .widget-icon { color: var(--color-accent-strong); }
-
 
 /* ── The board's settings, as a sidebar ────────────────────────────────
    It configures the whole page rather than one thing on it, so it has nothing to point at and stays
@@ -1864,7 +1622,6 @@ body:has(.inspector.is-sidebar) .board-settings { display: none; }
   body:has(.inspector.is-sidebar) .board-settings { display: none; }
 }
 
-
 /* Drawn chrome marks, sized to the button they sit in. */
 .glyph { width: 1em; height: 1em; display: block; }
 .widget-btn .glyph, .widget-remove-badge .glyph, .inspector-close .glyph, .board-settings .glyph { margin: 0 auto; }
@@ -1875,7 +1632,6 @@ body:has(.inspector.is-sidebar) .board-settings { display: none; }
 .widget-card-name {
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--color-surface) 60%);
 }
-
 
 /* The edge you pull to widen the sidebar. */
 .inspector-grip {
@@ -1891,10 +1647,8 @@ body:has(.inspector.is-sidebar) .board-settings { display: none; }
 }
 .inspector-grip:hover { background: var(--color-accent); }
 
-
 /* The page makes room for the sidebar instead of sitting under it. */
 #app { padding-right: var(--inspector-width, 0); transition: padding-right 0.12s ease-in-out; }
-
 
 /* Site-owner controls, in the page inspector's Advanced tab. */
 .site-defaults {
@@ -1908,3 +1662,13 @@ body:has(.inspector.is-sidebar) .board-settings { display: none; }
 .site-defaults-title { margin: 0; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; }
 .site-defaults-actions { display: flex; gap: 0.5em; flex-wrap: wrap; }
 .widget-btn.is-danger { border-color: var(--color-danger); color: var(--color-danger); }
+
+
+/* The reading column. It used to be a property of the anchor slots; with one grid holding the page
+   it belongs to the root board. */
+.page-root > .widget-board {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding: 2em clamp(1em, 7.5vw, 5em);
+}

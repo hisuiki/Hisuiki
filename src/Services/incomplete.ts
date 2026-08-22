@@ -1,4 +1,4 @@
-import { flowOf, isContainer } from "./layout";
+import { isContainer } from "./layout";
 import { titleAction } from "./titleWidget";
 import type { Widget, WidgetKind } from "../Types";
 
@@ -48,8 +48,8 @@ export function findUnfinished(root: Widget): Unfinished[] {
 
     if (isContainer(widget)) {
       const children = widget.children ?? [];
-      // An anchors container is the page itself; empty slots there are ordinary.
-      if (children.length === 0 && flowOf(widget) !== "anchors") {
+      // The root is the page itself, and an empty page is not a mistake to warn about.
+      if (children.length === 0) {
         found.push({ id: widget.id, kind: widget.kind, reason: "emptyContainer" });
       }
       for (const child of children) walk(child);

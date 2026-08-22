@@ -1,7 +1,6 @@
 import type {
   Anchor,
   Flow,
-  Placement,
   Scroll,
   AnchoredLayout,
   AnchorBackground,
@@ -11,7 +10,6 @@ import type {
   Widget,
   WidgetKind,
   WidgetSize,
-  WidgetStyle,
 } from "../Types";
 import { readStyle } from "./widgetStyle";
 
@@ -46,16 +44,6 @@ export const ANCHOR_LABELS: Record<Anchor, { en: string; ja: string }> = {
 export const GRID_COLUMNS = 4;
 
 /**
- * The height of one row in a free layout, in pixels.
- *
- * A free board needs a cell with two known dimensions or there is nothing to snap to: columns come
- * from the board's own width, rows have to be stated. Fixed rather than derived so that a widget
- * placed on a wide screen keeps its proportions on a narrow one — the columns reflow, the rows do
- * not stretch to fill.
- */
-export const FREE_ROW_HEIGHT = 72;
-
-/**
  * Where a widget sits on a free board.
  *
  * Columns and rows are 1-based, matching CSS grid lines, and spans are in cells. This is the one
@@ -63,26 +51,6 @@ export const FREE_ROW_HEIGHT = 72;
  * reflows its columns like any other, so a layout composed on a desktop narrows rather than
  * scrambling or scaling down illegibly.
  */
-
-const int = (value: unknown, min: number, max: number, fallback: number): number => {
-  const number = typeof value === "number" ? Math.round(value) : Number.NaN;
-  if (!Number.isFinite(number)) return fallback;
-  return Math.min(max, Math.max(min, number));
-};
-
-/** Read back through a clamp: these come from a stored document that can be written by hand. */
-export function placementOf(item: Widget): Placement {
-  const props = item.props ?? {};
-  const w = int(props.w, 1, GRID_COLUMNS, SIZE_SPAN[item.size]);
-  const col = int(props.col, 1, GRID_COLUMNS - w + 1, 1);
-  return { col, row: int(props.row, 1, 500, 1), w, h: int(props.h, 1, 40, 1) };
-}
-
-/** A widget moved or resized on a free board, with the placement folded back into its props. */
-export const withPlacement = (item: Widget, place: Placement): Widget => ({
-  ...item,
-  props: { ...item.props, ...place },
-});
 
 /** How many columns each size occupies at full width. */
 export const SIZE_SPAN: Record<WidgetSize, number> = {
@@ -93,7 +61,7 @@ export const SIZE_SPAN: Record<WidgetSize, number> = {
 
 export const SIZES: WidgetSize[] = ["small", "medium", "large"];
 
-export const FLOWS: Flow[] = ["row", "wrap", "column", "grid", "free", "anchors"];
+export const FLOWS: Flow[] = ["grid"];
 
 interface WidgetSpec {
   label: { en: string; ja: string };
@@ -274,23 +242,6 @@ export const columnsOf = (item: Widget): number => {
   return Number.isFinite(n) ? Math.min(12, Math.max(1, n)) : GRID_COLUMNS;
 };
 
-export const rowHeightOf = (item: Widget): number => {
-  const stored = item.props?.rowHeight;
-  const n = typeof stored === "number" ? Math.round(stored) : FREE_ROW_HEIGHT;
-  return Number.isFinite(n) ? Math.min(240, Math.max(24, n)) : FREE_ROW_HEIGHT;
-};
-
-/**
- * Whether the side slots run the full height of an anchors board.
- *
- * "inset" puts top and bottom across the whole width with the rails between them; "full" gives the
- * rails the full height instead, and top and bottom sit in the column between.
- */
-export const SIDES = ["inset", "full"] as const;
-export type Sides = (typeof SIDES)[number];
-
-export const sidesOf = (item: Widget): Sides =>
-  item.props?.sides === "full" ? "full" : "inset";
 
 /** The space between a container's children, in pixels. */
 export const gapOf = (item: Widget): number => {
@@ -299,17 +250,8 @@ export const gapOf = (item: Widget): number => {
   return Number.isFinite(n) ? Math.min(48, Math.max(0, n)) : 12;
 };
 
-/** Which slot a child sits in, for a container laying out in anchors. */
-export const slotOf = (item: Widget): Anchor => {
-  const stored = item.props?.anchor;
-  return isAnchor(stored) ? stored : "center";
-};
-
-/** The flow a container lays its children out with, defaulting to a row. */
-export const flowOf = (item: Widget): Flow => {
-  const stored = item.props?.flow;
-  return typeof stored === "string" && (FLOWS as string[]).includes(stored) ? (stored as Flow) : "row";
-};
+/** Every container is a grid. A stored flow from before that is ignored rather than honoured. */
+export const flowOf = (_item: Widget): Flow => "grid";
 
 export const isContainer = (item: Widget): boolean => WIDGETS[item.kind].container === true;
 
@@ -383,8 +325,7 @@ export function defaultRoot(): Widget {
   const anchors = defaultAnchors();
   return make("container", {
     size: "large",
-    props: { flow: "anchors" },
-    slots: { top: { shadow: "soft" }, bottom: { shadow: "soft" } },
+    props: { flow: "grid", columns: 4 },
     children: ANCHORS.flatMap((anchor) => anchors[anchor]),
   });
 }
@@ -423,11 +364,6 @@ function readWidget(raw: unknown, seen: Set<string>, depth: number): Widget | nu
     style: readStyle(value.style),
   };
 
-  // Anything not read back here is dropped on the next load, so per-slot styling has to be picked
-  // up explicitly — and through the same clamp as any other stored style.
-  const slots = readSlots(value.slots);
-  if (slots) result.slots = slots;
-
   if (spec.container) {
     const children = Array.isArray(value.children) && depth < MAX_DEPTH ? value.children : [];
     result.children = children
@@ -454,25 +390,6 @@ function migrateKind(raw: Record<string, unknown>): Partial<Widget> {
   }
 
   return value as Partial<Widget>;
-}
-
-/** Per-slot styling, keyed by anchor and clamped like any other style. */
-function readSlots(raw: unknown): Partial<Record<Anchor, WidgetStyle>> | undefined {
-  if (!raw || typeof raw !== "object") return undefined;
-
-  const source = raw as Record<string, unknown>;
-  const slots: Partial<Record<Anchor, WidgetStyle>> = {};
-  let any = false;
-
-  for (const anchor of ANCHORS) {
-    const style = readStyle(source[anchor]);
-    if (style) {
-      slots[anchor] = style;
-      any = true;
-    }
-  }
-
-  return any ? slots : undefined;
 }
 
 const readList = (raw: unknown, seen: Set<string>): Widget[] =>
@@ -546,8 +463,7 @@ function rootFromAnchors(anchors: AnchoredLayout): Widget {
 
   return make("container", {
     size: "large",
-    props: { flow: "anchors" },
-    slots: { top: { shadow: "soft" }, bottom: { shadow: "soft" } },
+    props: { flow: "grid", columns: 4 },
     children,
   });
 }
@@ -601,15 +517,6 @@ function migrate(layout: ProfileLayout | null | undefined): AnchoredLayout {
   return anchors;
 }
 
-/** The flow each anchor uses when nothing has been chosen: what that position is usually for. */
-export const DEFAULT_BOARD_FLOW: Record<Anchor, Flow> = {
-  top: "column",
-  left: "column",
-  center: "grid",
-  right: "column",
-  bottom: "column",
-};
-
 /** The side rails are off until somebody wants them; the other three are the page. */
 const DEFAULT_ENABLED: Record<Anchor, boolean> = {
   top: true,
@@ -643,9 +550,7 @@ export function readBoards(raw: unknown): Record<Anchor, BoardSettings> {
       : 0.55;
 
     boards[anchor] = {
-      flow: (FLOWS as string[]).includes(String(value.flow))
-        ? (value.flow as Flow)
-        : DEFAULT_BOARD_FLOW[anchor],
+      flow: "grid",
       scroll: (SCROLLS as string[]).includes(String(value.scroll)) ? (value.scroll as Scroll) : "none",
       enabled: typeof value.enabled === "boolean" ? value.enabled : DEFAULT_ENABLED[anchor],
       background: (BACKGROUNDS as string[]).includes(String(value.background))
@@ -911,7 +816,6 @@ function copyWidget(source: Widget): Widget {
     size: source.size,
     props: source.props ? { ...source.props } : undefined,
     style: source.style ? { ...source.style } : undefined,
-    slots: source.slots ? { ...source.slots } : undefined,
     children: source.children?.map(copyWidget),
   };
 }
@@ -954,19 +858,10 @@ export function wrapWidgets(widgets: Widget[], ids: Set<string>, flow: Flow): Wi
   const container = make("container", {
     size: "large",
     props: { flow },
-    // A free layout inside a container it was just wrapped into would place everything at cell 1,1
-    // on top of each other, so the placement each widget had on the board outside is dropped.
-    children: flow === "free" ? chosen.map(atOrigin) : chosen,
+    children: chosen,
   });
 
   return [...rest.slice(0, at), container, ...rest.slice(at)];
-}
-
-/** Strips a free-board placement, for a widget moving into a container that has its own. */
-function atOrigin(item: Widget): Widget {
-  if (!item.props) return item;
-  const { col: _col, row: _row, ...props } = item.props;
-  return { ...item, props };
 }
 
 /** Replaces one widget wherever it is, however deeply nested. */
@@ -1009,12 +904,6 @@ export function sizeForSpan(kind: WidgetKind, span: number): WidgetSize {
   }
 
   return best;
-}
-
-/** The next flow in the list, wrapping — what tapping a container's layout control does. */
-export function cycleFlow(item: Widget): Flow {
-  const index = FLOWS.indexOf(flowOf(item));
-  return FLOWS[(index + 1) % FLOWS.length] ?? "row";
 }
 
 /** What the gallery offers: everything there is. */

@@ -23,11 +23,13 @@ export type WidgetSize = "small" | "medium" | "large";
 /** The five page positions. The only fixed vocabulary in an otherwise arrangeable page. */
 export type Anchor = "top" | "left" | "center" | "right" | "bottom";
 
-/** How a board arranges what is in it. */
-export type Flow = "row" | "wrap" | "column" | "grid" | "free" | "anchors";
-
-/** A slot in an "anchors" layout. Stored on a child as props.anchor. */
-export type AnchorSlot = Anchor;
+/**
+ * How a board arranges what is in it.
+ *
+ * Only a grid, for now. Rows, columns, free placement and anchor slots each brought their own
+ * clipping, sizing and reflow problems; a grid is the one that behaves.
+ */
+export type Flow = "grid";
 
 /** Whether a board scrolls, and along which axis. */
 export type Scroll = "none" | "inline" | "block" | "both";
@@ -55,20 +57,10 @@ export interface Widget {
   size: WidgetSize;
   props?: Record<string, string | number | boolean>;
   style?: WidgetStyle;
-  /** Per-slot styling, for a container laying its children out in anchor slots. */
-  slots?: Partial<Record<Anchor, WidgetStyle>>;
   children?: Widget[];
 }
 
 export type AnchoredLayout = Record<Anchor, Widget[]>;
-
-/** Cell placement on a free board. 1-based, matching CSS grid lines. */
-export interface Placement {
-  col: number;
-  row: number;
-  w: number;
-  h: number;
-}
 
 /** How an anchor paints itself behind whatever is in it. */
 export type AnchorBackground = "none" | "shadow" | "blur" | "solid";

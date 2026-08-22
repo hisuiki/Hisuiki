@@ -1,39 +1,26 @@
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ANCHORS,
-  FREE_ROW_HEIGHT,
   GRID_COLUMNS,
   SIZE_SPAN,
   WIDGETS,
-  cycleFlow,
   duplicateWidget,
-  flowOf,
   isContainer,
   makeWidget,
   moveWidget,
-  placementOf,
   removeWidget,
   columnsOf,
   gapOf,
-  rowHeightOf,
   scrollOf,
-  sidesOf,
   sizeForSpan,
-  slotOf,
-  withPlacement,
   wrapWidgets,
-  FLOWS,
 } from "../../../Services/layout";
 import type { MenuItem, Widget, WidgetBoardProps } from "../../../Types";
 import { styleOf, styleVariables } from "../../../Services/widgetStyle";
 
-/** A stand-in widget, so a slot backdrop can reuse the widget style pipeline. */
-const EMPTY = { id: "", kind: "spacer", size: "small" } as const;
 import { WIDGET_REGISTRY } from "../../../Widgets";
 import { usePageLayout } from "../../../Services/pageLayout";
 import { DRAG_TYPE, readWidgetDrag } from "../../../Services/widgetDrag";
-import { useFitRow } from "../../Hooks/useFitRow";
 import { useOverflow } from "../../Hooks/useOverflow";
 import { useFlip } from "../../Hooks/useFlip";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
@@ -82,11 +69,8 @@ export default function WidgetBoard({
   widgets,
   flow = "grid",
   scroll = "none",
-  slots,
   columns,
-  rowHeight,
   gap,
-  sides = "inset",
   editing = false,
   anchor,
   containerId,
@@ -114,8 +98,6 @@ export default function WidgetBoard({
   const boardRef = useRef<HTMLDivElement | null>(null);
   const flipRef = useFlip();
 
-  const free = flow === "free";
-  const anchored = flow === "anchors";
   const {
     announceDrag,
     dragging: draggingGlobal,
@@ -199,9 +181,6 @@ export default function WidgetBoard({
     node.style.width = `${Math.abs(box.x2 - box.x1)}px`;
     node.style.height = `${Math.abs(box.y2 - box.y1)}px`;
   };
-  // A row neither wraps nor clips, so one with more in it than the page is wide has to give way
-  // somewhere. Scrolling is a setting and wrapping is a different flow; left alone, it shrinks.
-  const fit = useFitRow(flow === "row" && scroll === "none");
   // Only worth flagging where nothing can be done about it by scrolling.
   const overflow = useOverflow(editing && scroll === "none");
 
@@ -276,14 +255,10 @@ export default function WidgetBoard({
     const over = flipRef.rect(target.id);
 
     if (over) {
-      const horizontal =
-        flow === "row"
-          ? true
-          : flow === "column"
-            ? false
-            : carried
-              ? Math.abs(over.left - carried.left) > Math.abs(over.top - carried.top)
-              : over.width >= over.height;
+      // Whichever separation is larger is the axis the gesture is actually happening on.
+      const horizontal = carried
+        ? Math.abs(over.left - carried.left) > Math.abs(over.top - carried.top)
+        : over.width >= over.height;
 
       const forward = from < to;
 
@@ -299,13 +274,6 @@ export default function WidgetBoard({
     update(moveWidget(widgets, from, to));
   };
 
-  /** The size of one grid cell, measured rather than assumed: the columns reflow with the board. */
-  const cellSize = () => {
-    const rect = boardRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-    return { rect, width: rect.width / GRID_COLUMNS, height: FREE_ROW_HEIGHT };
-  };
-
   /**
    * Pulling the bottom-right corner.
    *
@@ -315,39 +283,16 @@ export default function WidgetBoard({
    * pointer stopped.
    */
   const resizeTo = (item: Widget, event: { clientX: number; clientY: number }) => {
-    const cell = cellSize();
+    const rect = boardRef.current?.getBoundingClientRect();
     const box = flipRef.rect(item.id);
-    if (!cell || !box) return;
+    if (!rect || !box) return;
 
-    const columns = Math.max(1, Math.round((event.clientX - box.left) / cell.width));
+    const cellWidth = rect.width / (columns ?? GRID_COLUMNS);
+    const spanned = Math.max(1, Math.round((event.clientX - box.left) / cellWidth));
 
-    if (!free) {
-      const next = sizeForSpan(item.kind, Math.min(GRID_COLUMNS, columns));
+      const next = sizeForSpan(item.kind, Math.min(columns ?? GRID_COLUMNS, spanned));
       if (next !== item.size) replace(item.id, { ...item, size: next });
       return;
-    }
-
-    const place = placementOf(item);
-    const w = Math.min(GRID_COLUMNS - place.col + 1, columns);
-    const h = Math.max(1, Math.round((event.clientY - box.top) / cell.height));
-    if (w !== place.w || h !== place.h) replace(item.id, withPlacement(item, { ...place, w, h }));
-  };
-
-  /** Dragging on a free board puts the widget in a cell rather than reordering the list. */
-  const placeOver = (item: Widget, event: { clientX: number; clientY: number }) => {
-    const cell = cellSize();
-    if (!cell) return;
-
-    const place = placementOf(item);
-    const col = Math.min(
-      GRID_COLUMNS - place.w + 1,
-      Math.max(1, Math.floor((event.clientX - cell.rect.left) / cell.width) + 1),
-    );
-    const row = Math.max(1, Math.floor((event.clientY - cell.rect.top) / cell.height) + 1);
-
-    if (col !== place.col || row !== place.row) {
-      replace(item.id, withPlacement(item, { ...place, col, row }));
-    }
   };
 
   /**
@@ -416,16 +361,12 @@ export default function WidgetBoard({
         onSelect: () => update(duplicateWidget(widgets, item.id)),
       },
       {
-        // The submenu is which kind of container: they differ only by the flow they lay out with,
-        // and choosing it here saves opening the Inspector to change it straight afterwards.
+        // No submenu: there is one kind of container now.
         label: group.size > 1 ? t("menu.wrapMany", { count: group.size }) : t("menu.wrap"),
-        items: FLOWS.map((into) => ({
-          label: t(`flows.${into}`),
-          onSelect: () => {
-            update(wrapWidgets(widgets, group as Set<string>, into));
-            setSelected(new Set());
-          },
-        })),
+        onSelect: () => {
+          update(wrapWidgets(widgets, group as Set<string>, "grid"));
+          setSelected(new Set());
+        },
       },
       {
         label: t("board.remove"),
@@ -454,18 +395,15 @@ export default function WidgetBoard({
           .join(" ")}
         ref={(node) => {
           boardRef.current = node;
-          fit.ref(node);
           overflow.ref(node);
         }}
         data-flow={flow}
         data-scroll={scroll}
         data-overflow={overflow.overflowing === "none" ? undefined : overflow.overflowing}
-        data-sides={anchored ? sides : undefined}
         // The cell height a free board snaps to, so the CSS and the arithmetic cannot disagree.
         style={
           {
-            ...(free ? { "--free-row": `${rowHeight ?? FREE_ROW_HEIGHT}px` } : {}),
-            ...(flow === "grid" || free ? { "--grid-columns": String(columns ?? GRID_COLUMNS) } : {}),
+            "--grid-columns": String(columns ?? GRID_COLUMNS),
             ...(gap === undefined ? {} : { "--board-gap": `${gap}px` }),
           } as React.CSSProperties
         }
@@ -491,9 +429,6 @@ export default function WidgetBoard({
 
           if (containerId && draggingGlobal.kind && draggingGlobal.id) {
             insertPreview(draggingGlobal.id, draggingGlobal.kind, containerId);
-          } else if (activeDraggingId !== null && free) {
-            const item = widgets.find((w) => w.id === activeDraggingId);
-            if (item) placeOver(item, e);
           }
         }}
         onDrop={(e) => {
@@ -528,22 +463,6 @@ export default function WidgetBoard({
           }
         }}
       >
-        {anchored &&
-          ANCHORS.map((slot) => {
-            const style = slots?.[slot];
-            if (!style && !editing) return null;
-            return (
-              <div
-                key={`slot-${slot}`}
-                className="board-slot"
-                style={{ gridArea: slot, ...(style ? styleVariables(styleOf({ ...EMPTY, style })) : {}) }}
-                data-slot={slot}
-                data-border={style?.border && style.border !== "none" ? style.border : undefined}
-                data-shadow={style?.shadow && style.shadow !== "none" ? style.shadow : undefined}
-                aria-hidden="true"
-              />
-            );
-          })}
 
         {/* Inside the board, because it is positioned against it. Always present while arranging so
             the first sight of it does not wait for a render. */}
@@ -563,13 +482,9 @@ export default function WidgetBoard({
               {container && (
                 <WidgetBoard
                   widgets={widget.children ?? []}
-                  flow={flowOf(widget)}
                   scroll={scrollOf(widget)}
-                  slots={widget.slots}
                   columns={columnsOf(widget)}
-                  rowHeight={rowHeightOf(widget)}
                   gap={gapOf(widget)}
-                  sides={sidesOf(widget)}
                   editing={editing}
                   anchor={anchor}
                   containerId={widget.id}
@@ -593,26 +508,12 @@ export default function WidgetBoard({
               style={{
                 // A free board places by cell; an ordinary grid by span. A row or a column is laid
                 // out by what is in it, and a grid-column on a flex item is simply ignored.
-                ...(anchored
-                  ? { gridArea: slotOf(widget) }
-                  : {}),
-                ...(free
-                  ? (() => {
-                      const p = placementOf(widget);
-                      return {
-                        gridColumn: `${p.col} / span ${p.w}`,
-                        gridRow: `${p.row} / span ${p.h}`,
-                      };
-                    })()
-                  : flow === "grid"
-                    ? { gridColumn: `span ${SIZE_SPAN[widget.size]}` }
-                    : {}),
+                gridColumn: `span ${SIZE_SPAN[widget.size]}`,
                 ...styleVariables(style),
               }}
               data-widget={widget.kind}
               // Which slot it sits in, so the stylesheet can hold the page to a reading width
               // without the slot's own background stopping at the same edge.
-              data-slot={anchored ? slotOf(widget) : undefined}
               // What the server scopes this widget's own stylesheet to. Must match widgetScope() in
               // server/services/layoutCss.ts, or a widget's CSS lands on nothing.
               data-widget-id={widget.id}
@@ -655,12 +556,7 @@ export default function WidgetBoard({
                 if (activeDraggingId !== null) {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (free) {
-                    const item = widgets.find((w) => w.id === activeDraggingId);
-                    if (item) placeOver(item, e);
-                  } else {
-                    reorderOver(widget, e);
-                  }
+                  reorderOver(widget, e);
                 } else if (containerId && draggingGlobal.kind && draggingGlobal.id) {
                   e.preventDefault();
                   e.stopPropagation();
@@ -731,21 +627,6 @@ export default function WidgetBoard({
 
                   <div className="widget-controls">
                     {/* A container's one real setting: which way its children run. */}
-                    {container && (
-                      <button
-                        type="button"
-                        className="widget-btn"
-                        title={t("board.layout")}
-                        onClick={() =>
-                          replace(widget.id, {
-                            ...widget,
-                            props: { ...widget.props, flow: cycleFlow(widget) },
-                          })
-                        }
-                      >
-                        {t(`flows.${flowOf(widget)}`)}
-                      </button>
-                    )}
                     <button
                       type="button"
                       className="widget-btn"
@@ -771,13 +652,13 @@ export default function WidgetBoard({
               {/* The corner you pull to resize. Pointer events rather than the drag machinery: a
                   drag would move the widget, and this has to change its size while it stays put.
                   Only where a size means something — a row or a column is measured by its contents. */}
-              {editing && (flow === "grid" || free) && (
+              {editing && (
                 <span
                   className="widget-resize-handle"
                   role="slider"
                   tabIndex={0}
                   aria-label={t("board.resize")}
-                  aria-valuenow={free ? placementOf(widget).w : SIZE_SPAN[widget.size]}
+                  aria-valuenow={SIZE_SPAN[widget.size]}
                   aria-valuemin={1}
                   aria-valuemax={GRID_COLUMNS}
                   onPointerDown={(e) => {
@@ -810,11 +691,7 @@ export default function WidgetBoard({
                     if (step === 0) return;
                     e.preventDefault();
 
-                    if (free) {
-                      const p = placementOf(widget);
-                      const w = Math.min(GRID_COLUMNS - p.col + 1, Math.max(1, p.w + step));
-                      replace(widget.id, withPlacement(widget, { ...p, w }));
-                    } else {
+                    {
                       const next = sizeForSpan(widget.kind, SIZE_SPAN[widget.size] + step);
                       if (next !== widget.size) replace(widget.id, { ...widget, size: next });
                     }

@@ -6,7 +6,7 @@ import BoardSettings from "./Common/Components/BoardSettings/BoardSettings";
 import LeaveGuard from "./Common/Components/LeaveGuard/LeaveGuard";
 import { AuthProvider } from "./Services/auth";
 import { PageLayoutProvider, usePageLayout } from "./Services/pageLayout";
-import { columnsOf, flowOf, rowHeightOf, scrollOf } from "./Services/layout";
+import { columnsOf, flowOf, scrollOf } from "./Services/layout";
 import WidgetBoard from "./Common/Components/WidgetBoard/WidgetBoard";
 import PageScope from "./Common/Components/PageScope/PageScope";
 import { setLanguage } from "./Services/i18n";
@@ -78,9 +78,7 @@ function Shell() {
           widgets={root.children ?? []}
           flow={flowOf(root)}
           scroll={scrollOf(root)}
-          slots={root.slots}
           columns={columnsOf(root)}
-          rowHeight={rowHeightOf(root)}
           containerId={root.id}
           editing={editing}
           onChange={(next) =>

@@ -37,19 +37,8 @@
     "confirmMessage": "Widgets are normally dragged to where you want them. Adding {{widget}} this way puts it at the end of the page, and you can drag it from there.",
     "confirmAdd": "add"
   },
-  "anchors": {
-    "top": "Top",
-    "left": "Left",
-    "center": "Centre",
-    "right": "Right",
-    "bottom": "Bottom"
-  },
   "flows": {
-    "row": "row",
-    "wrap": "wrap",
-    "column": "column",
-    "grid": "grid",
-    "free": "free"
+    "grid": "grid"
   },
   "widgets": {
     "container": {
@@ -286,29 +275,8 @@
     "scrollable": "Scrolling is on, so the rest can be reached — but anything reaching outside a scrolling container is clipped on both axes."
   },
   "layout": {
-    "slots": "Slot styling",
     "columns": "Columns",
-    "snap": "Snap height",
-    "snapNote": "Widgets align to cells this tall. Columns come from the board's width.",
-    "clearSlot": "Clear this slot's styling",
-    "about": {
-      "row": "One line, no wrapping. Contents shrink rather than run off the page.",
-      "wrap": "One line that folds onto the next when it runs out of room.",
-      "column": "Stacked, one above the next.",
-      "grid": "Even columns. Each widget spans a whole number of them.",
-      "free": "Widgets are placed on a snapping grid, each keeping its own cell and span.",
-      "anchors": "Five slots — top, left, centre, right and bottom. Each widget picks one."
-    },
-    "gap": "Gap",
-    "sides": "Side rails",
-    "sideModes": {
-      "inset": "Between top and bottom",
-      "full": "Full height"
-    },
-    "sideAbout": {
-      "inset": "Top and bottom span the page; the rails sit between them.",
-      "full": "The rails run the full height; top and bottom sit in the column between them."
-    }
+    "gap": "Gap"
   },
   "content": {
     "notFoundTitle": "Not found",
