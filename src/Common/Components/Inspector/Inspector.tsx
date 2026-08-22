@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { InspectorProps } from "../../../Types";
 
@@ -33,6 +33,17 @@ export default function Inspector({
       return DEFAULT_WIDTH;
     }
   });
+
+  // Published so the page can make room for it. An inspector that covers what it inspects is not
+  // much of one.
+  useLayoutEffect(() => {
+    if (variant !== "sidebar") return;
+    const root = document.documentElement;
+    root.style.setProperty("--inspector-width", `${width}px`);
+    return () => {
+      root.style.removeProperty("--inspector-width");
+    };
+  }, [variant, width]);
   const shown = tabs.find((tab) => tab.id === active) ?? tabs[0];
 
   const body = (
@@ -88,6 +99,7 @@ export default function Inspector({
             if (!dragging.current || !sidebar.current) return;
             const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, window.innerWidth - e.clientX));
             sidebar.current.style.width = `${next}px`;
+            document.documentElement.style.setProperty("--inspector-width", `${next}px`);
           }}
           onPointerUp={(e) => {
             dragging.current = false;

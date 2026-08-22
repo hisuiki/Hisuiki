@@ -61,6 +61,8 @@ export interface InspectorProps {
 
 export interface WidgetInspectorProps {
   widget: Widget;
+  /** Overrides the widget's own name, for the panel that configures the page as a whole. */
+  title?: string;
   anchor: RefObject<HTMLElement | null>;
   variant?: "popover" | "sidebar";
   onChange: (next: Widget) => void;

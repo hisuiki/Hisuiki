@@ -33,7 +33,7 @@ import SlotPicker from "./SlotPicker";
 import WidgetGallery from "../WidgetGallery/WidgetGallery";
 import { Check, Field, Group, Note, Select, Slider, TextField } from "./fields";
 
-export default function WidgetInspector({ widget, anchor, variant, onChange, onClose }: WidgetInspectorProps) {
+export default function WidgetInspector({ widget, anchor, variant, title, onChange, onClose }: WidgetInspectorProps) {
   const { t } = useTranslation();
 
   const spec = WIDGETS[widget.kind];
@@ -387,7 +387,7 @@ export default function WidgetInspector({ widget, anchor, variant, onChange, onC
 
   return (
     <Inspector
-      title={t(`widgets.${widget.kind}.label`)}
+      title={title ?? t(`widgets.${widget.kind}.label`)}
       anchor={anchor}
       variant={variant}
       onClose={onClose}

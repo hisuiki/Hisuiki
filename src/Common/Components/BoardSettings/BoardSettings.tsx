@@ -30,6 +30,7 @@ export default function BoardSettings() {
           widget={root}
           anchor={button}
           variant="sidebar"
+          title={t("inspector.page")}
           onChange={(next) => replaceWidget(root.id, next)}
           onClose={() => setOpen(false)}
         />

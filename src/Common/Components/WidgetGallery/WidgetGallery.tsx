@@ -190,7 +190,24 @@ export default function WidgetGallery({ onAdd, embedded, onDragStart }: WidgetGa
                   const cramped = Boolean(need && tile && (tile.w < need.w || tile.h < need.h));
 
                   return (
-                    <li className="widget-card" key={kind} data-widget={kind} ref={i === 0 ? measureTile : undefined}>
+                    <li
+                      className="widget-card"
+                      key={kind}
+                      data-widget={kind}
+                      ref={i === 0 ? measureTile : undefined}
+                      // The tile is the drag source. A button covering it was not one: browsers do
+                      // not start a drag from a form control, so dragstart never fired and nothing
+                      // downstream of it — the preview, closing the panel — ever happened.
+                      draggable
+                      onDragStart={(e) => {
+                        const id = `w-${newId()}`;
+                        e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ id, kind }));
+                        e.dataTransfer.effectAllowed = "copy";
+                        announceDrag({ id, kind });
+                        onDragStart?.();
+                      }}
+                      onDragEnd={() => cancelPreview()}
+                    >
                       {/* inert: a preview holds real links and real buttons. */}
                       <div className="widget-card-preview" inert aria-hidden="true">
                         {cramped ? (
@@ -200,26 +217,13 @@ export default function WidgetGallery({ onAdd, embedded, onDragStart }: WidgetGa
                         )}
                       </div>
 
-                      {/* Also a button, so the shelf is not pointer-only. */}
+                      {/* A footer rather than an overlay, so the shelf stays usable without a
+                          pointer while leaving the tile itself draggable. */}
                       <button
                         type="button"
                         className="widget-card-button"
-                        draggable
-                        aria-label={`${t("gallery.drag")}: ${label}`}
+                        aria-label={`${t("gallery.add")}: ${label}`}
                         title={t("gallery.dragHint")}
-                        onDragStart={(e) => {
-                          const id = `w-${newId()}`;
-                          e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ id, kind }));
-                          e.dataTransfer.effectAllowed = "copy";
-                          announceDrag({ id, kind });
-                          // The panel would otherwise cover the page being dropped onto. The drag
-                          // survives it: once started, the browser owns the gesture.
-                          onDragStart?.();
-                        }}
-                        onDragEnd={() => {
-                          cancelPreview();
-                        }}
-                        // Clicking is the fallback, not the way: it asks first, and says why.
                         onClick={() => setConfirming(kind)}
                       >
                         <span className="widget-card-name">{label}</span>
