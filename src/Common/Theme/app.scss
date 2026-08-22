@@ -205,7 +205,7 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .app-modal.is-closing { animation: app-modal-rise-out 0.18s ease-in forwards; }
 .app-modal-kicker { margin: 0 0 0.3em; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; font-weight: 600; color: var(--color-text-faint); }
 .app-modal-title { margin: 0 0 0.6em; text-transform: lowercase; font-size: 1.9rem; font-weight: 200; line-height: 1.1; color: #ffffff; }
-.app-modal-message { margin: 0 0 0.4em; font-size: 0.95rem; font-weight: 300; line-height: 1.5; color: var(--color-text-secondary); }
+.app-modal-message { white-space: pre-line; margin: 0 0 0.4em; font-size: 0.95rem; font-weight: 300; line-height: 1.5; color: var(--color-text-secondary); }
 .app-modal-url { margin: 0 0 1.6em; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.8rem; color: var(--color-text-muted); word-break: break-all; }
 .app-modal-actions { display: flex; justify-content: flex-end; gap: 1.6em; }
 .app-modal-btn {
@@ -1894,3 +1894,17 @@ body:has(.inspector.is-sidebar) .board-settings { display: none; }
 
 /* The page makes room for the sidebar instead of sitting under it. */
 #app { padding-right: var(--inspector-width, 0); transition: padding-right 0.12s ease-in-out; }
+
+
+/* Site-owner controls, in the page inspector's Advanced tab. */
+.site-defaults {
+  margin-top: 1em;
+  padding-top: 1em;
+  border-top: 1px solid var(--color-accent-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+.site-defaults-title { margin: 0; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; }
+.site-defaults-actions { display: flex; gap: 0.5em; flex-wrap: wrap; }
+.widget-btn.is-danger { border-color: var(--color-danger); color: var(--color-danger); }

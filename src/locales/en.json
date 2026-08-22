@@ -313,5 +313,29 @@
   "content": {
     "notFoundTitle": "Not found",
     "notFound": "Sorry, the content you are looking for does not exist."
+  },
+  "unfinished": {
+    "title_one": "One widget will not show",
+    "title_other": "{{count}} widgets will not show",
+    "message": "These are on the page but have nothing to render, so a visitor will see an empty space where each one sits:",
+    "noHref": "no link set",
+    "noPath": "no page set",
+    "empty": "no heading or text",
+    "noTrack": "no audio set",
+    "emptyContainer": "nothing inside it",
+    "more": "and {{count}} more",
+    "leave": "leave anyway",
+    "stay": "keep editing"
+  },
+  "siteDefaults": {
+    "title": "Starting layout for new accounts",
+    "none": "New accounts start from the layout the app ships.",
+    "published": "New accounts start from a layout published on {{when}}.",
+    "publish": "Publish this page",
+    "publishTitle": "Publish this page as the starting layout?",
+    "publishMessage": "Every account created from now on starts from this page. Existing profiles are untouched.",
+    "clear": "Clear",
+    "clearTitle": "Clear the published layout?",
+    "clearMessage": "New accounts go back to starting from the layout the app ships. Existing profiles are untouched."
   }
 }

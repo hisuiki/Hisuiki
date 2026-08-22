@@ -270,3 +270,11 @@ model ProfilePage {
   @@unique([userId, slug])
   @@map("profile_page")
 }
+
+/// Settings that belong to the site rather than to any one person. One row per key.
+model SiteSetting {
+  key   String @id
+  /// Free-form: what a key means is decided by whoever reads it.
+  value Json
+  updatedAt DateTime @updatedAt
+}

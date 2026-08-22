@@ -3,6 +3,7 @@ import AppModal from "./Common/Components/AppModal/AppModal";
 import SaveIndicator from "./Common/Components/SaveIndicator/SaveIndicator";
 import Wallpaper from "./Common/Components/Wallpaper/Wallpaper";
 import BoardSettings from "./Common/Components/BoardSettings/BoardSettings";
+import LeaveGuard from "./Common/Components/LeaveGuard/LeaveGuard";
 import { AuthProvider } from "./Services/auth";
 import { PageLayoutProvider, usePageLayout } from "./Services/pageLayout";
 import { columnsOf, flowOf, rowHeightOf, scrollOf } from "./Services/layout";
@@ -91,6 +92,7 @@ function Shell() {
         />
       </div>
 
+      <LeaveGuard />
       <AppModal />
     </>
   );

@@ -30,6 +30,7 @@ import { ROUTE_KEYS, titleAction } from "../../../Services/titleWidget";
 import type { Anchor, WidgetInspectorProps, WidgetSize, WidgetStyle } from "../../../Types";
 import Inspector from "./Inspector";
 import SlotPicker from "./SlotPicker";
+import SiteDefaults from "../SiteDefaults/SiteDefaults";
 import WidgetGallery from "../WidgetGallery/WidgetGallery";
 import { Check, Field, Group, Note, Select, Slider, TextField } from "./fields";
 
@@ -382,6 +383,9 @@ export default function WidgetInspector({ widget, anchor, variant, title, onChan
         />
       </Field>
       <Note>{t("inspector.cssNote")}</Note>
+
+      {/* Page-level, so it belongs to the panel that configures the page. */}
+      {variant === "sidebar" && <SiteDefaults />}
     </>
   );
 

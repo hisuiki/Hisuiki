@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type AnchorHTMLAttributes,
   type ReactNode,
@@ -14,11 +15,14 @@ import {
 interface RouterValue {
   pathname: string;
   navigate: (to: string, options?: { replace?: boolean }) => void;
+  /** Registers a veto on navigation. Returning false holds it back. */
+  setGuard: (guard: ((to: string) => boolean) | null) => void;
 }
 
 const RouterContext = createContext<RouterValue>({
   pathname: "/",
   navigate: () => {},
+  setGuard: () => {},
 });
 
 /** Returns the handle of the current profile, parsed from subdomain or /users/:handle */
@@ -118,15 +122,25 @@ export function RouterProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  // A guard can hold a navigation back — used to ask before leaving a half-finished page.
+  const guard = useRef<((to: string) => boolean) | null>(null);
+  const setGuard = useCallback((fn: ((to: string) => boolean) | null) => {
+    guard.current = fn;
+  }, []);
+
   const navigate = useCallback((to: string, options?: { replace?: boolean }) => {
     to = injectHandlePrefix(to);
+    if (guard.current && !guard.current(to)) return;
     if (options?.replace) window.history.replaceState({}, "", to);
     else window.history.pushState({}, "", to);
     setPathname(new URL(to, window.location.href).pathname);
     window.scrollTo(0, 0);
   }, []);
 
-  const value = useMemo<RouterValue>(() => ({ pathname, navigate }), [pathname, navigate]);
+  const value = useMemo<RouterValue>(
+    () => ({ pathname, navigate, setGuard }),
+    [pathname, navigate, setGuard],
+  );
 
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>;
 }

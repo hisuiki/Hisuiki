@@ -5,6 +5,7 @@ import { displayName, getViewer } from "../services/identity.js";
 import { saveContent } from "../services/content.js";
 import { PROFILE_SCOPE, scopeCss } from "../services/userContent.js";
 import { scopeLayoutCss } from "../services/layoutCss.js";
+import { publishedDefaultLayout } from "./site.js";
 import { consumeQuota } from "../services/rateLimit.js";
 
 export const profileRouter = Router();
@@ -18,11 +19,15 @@ profileRouter.get("/me", async (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  // A new profile starts from whatever a site owner has published, if anything.
+  const starting = await publishedDefaultLayout();
+
   const profile = await prisma.profile.upsert({
     where: { userId: viewer.id },
     update: {},
     create: {
       userId: viewer.id,
+      ...(starting ? { layout: starting } : {}),
     },
     include: {
       user: {

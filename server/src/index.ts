@@ -59,7 +59,8 @@ app.use("/api", (_req, res, next) => {
 if (config.servesApi) {
   const [
     { toNodeHandler },
-    { auth, availableProviders },
+    { auth },
+    { siteRouter },
     { photosRouter },
     { wallpaperRouter },
     { profileRouter },
@@ -68,6 +69,7 @@ if (config.servesApi) {
     await Promise.all([
       import("better-auth/node"),
       import("./services/auth.js"),
+      import("./routes/site.js"),
       import("./routes/photos.js"),
       import("./routes/wallpaper.js"),
       import("./routes/profile.js"),
@@ -78,17 +80,8 @@ if (config.servesApi) {
 
   app.use(express.json({ limit: "1mb" }));
 
-  /**
-   * What this deployment can actually do, so the sign-in page does not offer a button that fails.
-   *
-   * A development stack has no OAuth application of its own, and pressing "Continue with GitHub"
-   * there used to reach better-auth with no client id and come back as an unexplained 500.
-   */
-  app.get("/api/site", (_req, res) => {
-    res.json({ socialProviders: availableProviders() });
-  });
-
   // No cache override: like and comment counts change per request and must never be shared-cached.
+  app.use("/api/site", siteRouter);
   app.use("/api/photos", photosRouter);
   app.use("/api/wallpaper", wallpaperRouter);
   app.use("/api/profile", profileRouter);
