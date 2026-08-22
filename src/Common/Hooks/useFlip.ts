@@ -4,6 +4,8 @@ import { useLayoutEffect, useRef } from "react";
 const THRESHOLD = 2;
 
 const DURATION = 220;
+/** Shorter for a plain resize: it repeats as a corner is dragged, and should keep up rather than lag. */
+const RESIZE_DURATION = 110;
 const EASING = "cubic-bezier(0.2, 0, 0, 1)";
 
 /**
@@ -22,11 +24,13 @@ const EASING = "cubic-bezier(0.2, 0, 0, 1)";
  * measurement of one — a drag needs to know where things currently are, and the hook is already
  * holding the elements.
  */
-export function useFlip() {
+export function useFlip(enabled = true) {
   const nodes = useRef(new Map<string, HTMLElement>());
   const positions = useRef(new Map<string, DOMRect>());
 
   useLayoutEffect(() => {
+    // Positions are still recorded while disabled, so the first move after it is re-enabled animates
+    // from where things actually are rather than from wherever they were last animated.
     for (const [id, element] of nodes.current) {
       const next = element.getBoundingClientRect();
       const previous = positions.current.get(id);
@@ -37,13 +41,26 @@ export function useFlip() {
 
       const dx = previous.left - next.left;
       const dy = previous.top - next.top;
-      if (Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) continue;
+      const dw = previous.width - next.width;
+      const dh = previous.height - next.height;
+      if (!enabled) continue;
 
-      // A script animation outranks the CSS one the widget is already running, and reverts to it
-      // when finished — so the dance resumes on its own once the widget has landed.
+      const moved = Math.abs(dx) >= THRESHOLD || Math.abs(dy) >= THRESHOLD;
+      const resized = Math.abs(dw) >= THRESHOLD || Math.abs(dh) >= THRESHOLD;
+      if (!moved && !resized) continue;
+
+      // Size is animated as well as position: a widget whose span changed jumps between grid cells,
+      // and there is no property on a grid item to transition for it.
       element.animate(
-        [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }],
-        { duration: DURATION, easing: EASING },
+        [
+          {
+            transform: `translate(${dx}px, ${dy}px)`,
+            width: `${previous.width}px`,
+            height: `${previous.height}px`,
+          },
+          { transform: "translate(0, 0)", width: `${next.width}px`, height: `${next.height}px` },
+        ],
+        { duration: resized && !moved ? RESIZE_DURATION : DURATION, easing: EASING },
       );
     }
 

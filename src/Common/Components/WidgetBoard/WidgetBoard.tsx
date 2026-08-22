@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "
 import { useTranslation } from "react-i18next";
 import {
   GRID_COLUMNS,
+  ROW_HEIGHT,
   WIDGETS,
   duplicateWidget,
   isContainer,
@@ -11,6 +12,7 @@ import {
   columnsOf,
   gapOf,
   scrollOf,
+  rowsOf,
   spanOf,
   wrapWidgets,
 } from "../../../Services/layout";
@@ -80,6 +82,7 @@ export default function WidgetBoard({
   // index would stop referring to the thing in your hand after the first swap.
   const [dragging, setDragging] = useState<string | null>(null);
   const draggedNode = useRef<HTMLElement | null>(null);
+  const reorderFrame = useRef(0);
   const [pendingRemoval, setPendingRemoval] = useState<Widget | null>(null);
   // Which widget's Inspector is open, and the element it hangs from. One at a time: two panels for
   // two widgets would leave no way to tell which one you were changing.
@@ -95,7 +98,6 @@ export default function WidgetBoard({
   // something to aim at rather than a size that changes for no visible reason.
   const [resizing, setResizing] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
-  const flipRef = useFlip();
 
   const {
     announceDrag,
@@ -109,6 +111,10 @@ export default function WidgetBoard({
     (draggingGlobal?.id && widgets.some((w) => w.id === draggingGlobal.id)
       ? draggingGlobal.id
       : null);
+
+  // Reordering already shows where a widget will land; animating every neighbour on top of that,
+  // many times a second, is what made the board flicker while something was being moved.
+  const flipRef = useFlip(activeDraggingId === null && draggingGlobal === null);
 
   // The safety net for a resize: capture can be lost when the handle is reconciled mid-drag, and
   // without this the release never arrives and the widget stays locked out of dragging.
@@ -244,6 +250,12 @@ export default function WidgetBoard({
    * means swapping back requires actually moving back.
    */
   const reorderOver = (target: Widget, event: { clientX: number; clientY: number }) => {
+    // dragover fires far faster than the board can be redrawn; one reorder per frame is plenty.
+    if (reorderFrame.current) return;
+    reorderFrame.current = window.requestAnimationFrame(() => {
+      reorderFrame.current = 0;
+    });
+
     if (activeDraggingId === null || activeDraggingId === target.id) return;
 
     const from = widgets.findIndex((item) => item.id === activeDraggingId);
@@ -288,10 +300,12 @@ export default function WidgetBoard({
 
     const total = columns ?? GRID_COLUMNS;
     const cellWidth = rect.width / total;
-    const next = Math.min(total, Math.max(1, Math.round((event.clientX - box.left) / cellWidth)));
+    const span = Math.min(total, Math.max(1, Math.round((event.clientX - box.left) / cellWidth)));
+    // Both axes: a corner that only ever changed the width is half a corner.
+    const rows = Math.min(40, Math.max(1, Math.round((event.clientY - box.top) / ROW_HEIGHT)));
 
-    if (next !== spanOf(item, total)) {
-      replace(item.id, { ...item, props: { ...item.props, span: next } });
+    if (span !== spanOf(item, total) || rows !== rowsOf(item)) {
+      replace(item.id, { ...item, props: { ...item.props, span, rows } });
     }
   };
 
@@ -404,6 +418,7 @@ export default function WidgetBoard({
         style={
           {
             "--grid-columns": String(columns ?? GRID_COLUMNS),
+            "--row-height": `${ROW_HEIGHT}px`,
             ...(gap === undefined ? {} : { "--board-gap": `${gap}px` }),
           } as React.CSSProperties
         }
@@ -509,6 +524,7 @@ export default function WidgetBoard({
                 // A free board places by cell; an ordinary grid by span. A row or a column is laid
                 // out by what is in it, and a grid-column on a flex item is simply ignored.
                 gridColumn: `span ${spanOf(widget, columns ?? GRID_COLUMNS)}`,
+                gridRow: `span ${rowsOf(widget)}`,
                 ...styleVariables(style),
               }}
               data-widget={widget.kind}
@@ -687,6 +703,14 @@ export default function WidgetBoard({
                   onPointerCancel={() => setResizing(null)}
                   // The same thing from the keyboard, since a corner is pointer-only by nature.
                   onKeyDown={(e) => {
+                    const vertical = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+                    if (vertical !== 0) {
+                      e.preventDefault();
+                      const rows = Math.min(40, Math.max(1, rowsOf(widget) + vertical));
+                      replace(widget.id, { ...widget, props: { ...widget.props, rows } });
+                      return;
+                    }
+
                     const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
                     if (step === 0) return;
                     e.preventDefault();

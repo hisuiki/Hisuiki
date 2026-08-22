@@ -715,7 +715,15 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    One component lays out the header bar, the footer, a sidebar and a profile body; what differs is
    only the flow it was given. A container passes its own flow down to the board inside it. */
 .widget-board { position: relative; min-width: 0; }
-.widget-board[data-flow="grid"] { display: grid; grid-template-columns: repeat(var(--grid-columns, 4), 1fr); gap: var(--board-gap, 1.2em); align-items: start; }
+/* Rows have a minimum height rather than a fixed one: dragging a corner downwards sets how tall a
+   widget is at least, and content taller than that still grows rather than being cut off. */
+.widget-board[data-flow="grid"] {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns, 4), 1fr);
+  grid-auto-rows: minmax(var(--row-height, 72px), auto);
+  gap: var(--board-gap, 1.2em);
+  align-items: stretch;
+}
 
 /* The grid, drawn only while a corner is being pulled. It exists to be aimed at: a size that snaps
    without showing what it is snapping to just looks like it is fighting you. */
@@ -1717,3 +1725,7 @@ body:has(.inspector.is-sidebar) .board-settings { display: none; }
   cursor: grab;
 }
 .widget-card-button { z-index: 2; }
+
+
+/* Filling the rows it was given, so a height set by dragging is the widget's height. */
+.widget-board[data-flow="grid"] > .widget { min-height: 0; }

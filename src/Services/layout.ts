@@ -260,6 +260,21 @@ export function spanOf(item: Widget, columns: number): number {
   return Math.min(columns, Math.max(1, raw));
 }
 
+/** The height of one grid row, in pixels. What dragging a corner downwards snaps to. */
+export const ROW_HEIGHT = 72;
+
+/**
+ * How many rows a widget covers.
+ *
+ * Rows have a minimum height rather than a fixed one, so this sets how tall a widget is *at least*.
+ * Content taller than its rows still grows rather than being cut off.
+ */
+export function rowsOf(item: Widget): number {
+  const stored = item.props?.rows;
+  const raw = typeof stored === "number" && Number.isFinite(stored) ? Math.round(stored) : 1;
+  return Math.min(40, Math.max(1, raw));
+}
+
 /** The space between a container's children, in pixels. */
 export const gapOf = (item: Widget): number => {
   const stored = item.props?.gap;
