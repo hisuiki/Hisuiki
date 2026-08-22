@@ -38,6 +38,7 @@ import { useOverflow } from "../../Hooks/useOverflow";
 import { useFlip } from "../../Hooks/useFlip";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 import EmptyBoard from "../EmptyBoard/EmptyBoard";
+import Glyph from "../WidgetIcon/Glyph";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import OverflowWarning from "../OverflowWarning/OverflowWarning";
 import WidgetInspector from "../Inspector/WidgetInspector";
@@ -720,7 +721,7 @@ export default function WidgetBoard({
                       : update(removeWidget(widgets, widget.id))
                   }
                 >
-                  ✕
+                  <Glyph name="close" />
                 </button>
               )}
 
@@ -751,7 +752,7 @@ export default function WidgetBoard({
                       title={t("board.duplicate")}
                       onClick={() => update(duplicateWidget(widgets, widget.id))}
                     >
-                      ⧉
+                      <Glyph name="duplicate" />
                     </button>
                     <button
                       type="button"
@@ -760,9 +761,9 @@ export default function WidgetBoard({
                       aria-expanded={inspecting === widget.id}
                       onClick={() => inspect(inspecting === widget.id ? null : widget.id)}
                     >
-                      ⚙
+                      <Glyph name="settings" />
                     </button>
-                    <span className="widget-grip" aria-hidden="true">⠿</span>
+                    <span className="widget-grip" aria-hidden="true"><Glyph name="grip" /></span>
                   </div>
                 </div>
               )}

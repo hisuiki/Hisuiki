@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePageLayout } from "../../../Services/pageLayout";
 import WidgetInspector from "../Inspector/WidgetInspector";
+import Glyph from "../WidgetIcon/Glyph";
 
 /** The one settings button, for the container the whole page is. */
 export default function BoardSettings() {
@@ -21,13 +22,14 @@ export default function BoardSettings() {
         title={t("board.settings")}
         onClick={() => setOpen(!open)}
       >
-        ⚙
+        <Glyph name="settings" />
       </button>
 
       {open && (
         <WidgetInspector
           widget={root}
           anchor={button}
+          variant="sidebar"
           onChange={(next) => replaceWidget(root.id, next)}
           onClose={() => setOpen(false)}
         />

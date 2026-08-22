@@ -1837,3 +1837,56 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .widget-icon svg { width: 2.6em; height: 2.6em; }
 .widget-card:hover .widget-icon { color: var(--color-accent-strong); }
+
+
+/* ── The board's settings, as a sidebar ────────────────────────────────
+   It configures the whole page rather than one thing on it, so it has nothing to point at and stays
+   put at the edge instead of following a widget around. */
+.inspector.is-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  max-width: 100vw;
+  border-width: 0 0 0 2px;
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+}
+.inspector.is-sidebar .inspector-body { max-height: 100%; flex: 1; }
+/* The gear sits under it once it is open, so it moves aside. */
+.inspector.is-sidebar ~ .board-settings,
+/* The gear would otherwise sit under the sidebar; it is hidden while the sidebar has its own. */
+body:has(.inspector.is-sidebar) .board-settings { display: none; }
+
+@media screen and (max-width: 520px) {
+  .inspector.is-sidebar { width: 100vw; border-left-width: 0; }
+  body:has(.inspector.is-sidebar) .board-settings { display: none; }
+}
+
+
+/* Drawn chrome marks, sized to the button they sit in. */
+.glyph { width: 1em; height: 1em; display: block; }
+.widget-btn .glyph, .widget-remove-badge .glyph, .inspector-close .glyph, .board-settings .glyph { margin: 0 auto; }
+.widget-grip .glyph { width: 1.1em; height: 1.1em; }
+
+/* The name sits over the tile, so the preview stops short of it rather than running underneath. */
+.widget-card-preview { padding-bottom: 2.4em; }
+.widget-card-name {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--color-surface) 60%);
+}
+
+
+/* The edge you pull to widen the sidebar. */
+.inspector-grip {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  touch-action: none;
+  background: transparent;
+  transition: background 0.12s ease-in-out;
+}
+.inspector-grip:hover { background: var(--color-accent); }

@@ -50,7 +50,10 @@ export interface InspectorTab {
 export interface InspectorProps {
   title: string;
   subtitle?: string;
+  /** Where a popover hangs from. Unused by the sidebar, which is fixed to the edge. */
   anchor: RefObject<HTMLElement | null>;
+  /** A popover points at what it configures; a sidebar stays put beside the whole page. */
+  variant?: "popover" | "sidebar";
   align?: "left" | "right";
   tabs: InspectorTab[];
   onClose: () => void;
@@ -59,6 +62,7 @@ export interface InspectorProps {
 export interface WidgetInspectorProps {
   widget: Widget;
   anchor: RefObject<HTMLElement | null>;
+  variant?: "popover" | "sidebar";
   onChange: (next: Widget) => void;
   onClose: () => void;
 }
