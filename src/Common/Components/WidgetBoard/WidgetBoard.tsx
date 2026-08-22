@@ -186,16 +186,6 @@ export default function WidgetBoard({
   const lasso = useRef<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const band = useRef<HTMLDivElement | null>(null);
 
-  /** Clamped to the board: a lasso belongs to the board it started on, not to the whole viewport. */
-  const clampToBoard = (x: number, y: number) => {
-    const rect = boardRef.current?.getBoundingClientRect();
-    if (!rect) return { x, y };
-    return {
-      x: Math.min(Math.max(x, rect.left), rect.right),
-      y: Math.min(Math.max(y, rect.top), rect.bottom),
-    };
-  };
-
   const drawBand = () => {
     const box = lasso.current;
     const node = band.current;
@@ -361,27 +351,36 @@ export default function WidgetBoard({
   };
 
   /**
-   * A rubber band over the board's own background.
+   * A rubber band over the board's background.
    *
-   * Started only where the press lands on the board itself rather than on a widget, so it cannot
-   * begin under something you meant to drag. What it selects is decided on release, from the rects
-   * as they are then: selecting continuously while the band is drawn would flicker the outlines of
-   * everything the pointer skimmed past.
+   * Started wherever the press lands on empty space rather than on an interactive part of a widget,
+   * so it cannot begin under something you meant to drag. What it selects is decided on release,
+   * from the rects as they are then.
    */
-  const startLasso = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!editing || event.button !== 0) return;
-    if (event.target !== event.currentTarget) return;
+  const startLasso = useCallback(
+    (event: React.PointerEvent<HTMLDivElement> | PointerEvent) => {
+      if (!editing || event.button !== 0) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.(".widget")) return;
 
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const start = clampToBoard(event.clientX, event.clientY);
-    lasso.current = { x1: start.x, y1: start.y, x2: start.x, y2: start.y };
-    drawBand();
-    // Only if something was selected: an unconditional set would re-render the board on every click
-    // on the background.
-    setSelected((current) => (current.size === 0 ? current : new Set()));
-  };
+      try {
+        if (event.currentTarget && "setPointerCapture" in event.currentTarget) {
+          (event.currentTarget as HTMLElement).setPointerCapture((event as React.PointerEvent).pointerId);
+        }
+      } catch {
+        // Capture is an optimisation; window listeners guarantee pointermove and pointerup.
+      }
 
-  const endLasso = () => {
+      lasso.current = { x1: event.clientX, y1: event.clientY, x2: event.clientX, y2: event.clientY };
+      drawBand();
+      // Only if something was selected: an unconditional set would re-render the board on every click
+      // on the background.
+      setSelected((current) => (current.size === 0 ? current : new Set()));
+    },
+    [editing],
+  );
+
+  const endLasso = useCallback(() => {
     const drawn = lasso.current;
     lasso.current = null;
     drawBand();
@@ -409,7 +408,66 @@ export default function WidgetBoard({
     }
 
     setSelected(caught);
-  };
+  }, [widgets, flipRef]);
+
+  useEffect(() => {
+    const onWindowPointerMove = (e: PointerEvent) => {
+      if (!lasso.current) return;
+      lasso.current = { ...lasso.current, x2: e.clientX, y2: e.clientY };
+      drawBand();
+    };
+
+    const onWindowPointerUp = () => {
+      if (!lasso.current) return;
+      endLasso();
+    };
+
+    const onWindowPointerCancel = () => {
+      if (!lasso.current) return;
+      lasso.current = null;
+      drawBand();
+    };
+
+    window.addEventListener("pointermove", onWindowPointerMove);
+    window.addEventListener("pointerup", onWindowPointerUp);
+    window.addEventListener("pointercancel", onWindowPointerCancel);
+
+    return () => {
+      window.removeEventListener("pointermove", onWindowPointerMove);
+      window.removeEventListener("pointerup", onWindowPointerUp);
+      window.removeEventListener("pointercancel", onWindowPointerCancel);
+    };
+  }, [endLasso]);
+
+  // When mounted at the root level, listen on the parent wrapper (e.g. .page-root) so lasso and
+  // context menu work across the whole page canvas, including wide desktop margins.
+  useEffect(() => {
+    if (!editing || containerId !== root.id) return;
+    const parent = boardRef.current?.parentElement;
+    if (!parent) return;
+
+    const onParentPointerDown = (e: PointerEvent) => {
+      if (e.target === parent) {
+        startLasso(e);
+      }
+    };
+
+    const onParentContextMenu = (e: MouseEvent) => {
+      if (e.target === parent) {
+        e.preventDefault();
+        setSelected((current) => (current.size === 0 ? current : new Set()));
+        setMenu(null);
+      }
+    };
+
+    parent.addEventListener("pointerdown", onParentPointerDown);
+    parent.addEventListener("contextmenu", onParentContextMenu);
+
+    return () => {
+      parent.removeEventListener("pointerdown", onParentPointerDown);
+      parent.removeEventListener("contextmenu", onParentContextMenu);
+    };
+  }, [editing, containerId, root.id, startLasso]);
 
   /** What the right-click menu offers for a widget, and for a selection it happens to be part of. */
   const menuItems = (item: Widget): MenuItem[] => {
@@ -487,17 +545,16 @@ export default function WidgetBoard({
             ...(gap === undefined ? {} : { "--board-gap": `${gap}px` }),
           } as React.CSSProperties
         }
-        onPointerDown={startLasso}
-        onPointerMove={(e) => {
-          if (!lasso.current) return;
-          const point = clampToBoard(e.clientX, e.clientY);
-          lasso.current = { ...lasso.current, x2: point.x, y2: point.y };
-          drawBand();
+        onPointerDown={(e) => {
+          if (containerId) e.stopPropagation();
+          startLasso(e);
         }}
-        onPointerUp={endLasso}
-        onPointerCancel={() => {
-          lasso.current = null;
-          drawBand();
+        onContextMenu={(e) => {
+          if (!editing) return;
+          e.preventDefault();
+          if (containerId) e.stopPropagation();
+          setSelected((current) => (current.size === 0 ? current : new Set()));
+          setMenu(null);
         }}
         onDragOver={(e) => {
           if (!editing || draggingGlobal === null) return;

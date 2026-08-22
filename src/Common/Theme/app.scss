@@ -1677,9 +1677,16 @@ body:has(.inspector.is-sidebar) .board-settings { display: none; }
 .widget-btn.is-danger { border-color: var(--color-danger); color: var(--color-danger); }
 
 
-/* The reading column. It used to be a property of the anchor slots; with one grid holding the page
-   it belongs to the root board. */
+.page-root {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%;
+  width: 100%;
+}
 .page-root > .widget-board {
+  flex: 1;
+  min-height: 100%;
   width: 100%;
   max-width: 1200px;
   margin-inline: auto;
