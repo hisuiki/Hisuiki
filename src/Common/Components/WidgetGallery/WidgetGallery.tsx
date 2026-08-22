@@ -1,6 +1,7 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { WIDGETS, galleryKinds, newId } from "../../../Services/layout";
+import WidgetIcon from "../WidgetIcon/WidgetIcon";
 import { fetchFeed } from "../../../Services/api";
 import { fetchProfile, fetchMyProfile } from "../../../Services/profile";
 import { usePageLayout } from "../../../Services/pageLayout";
@@ -39,6 +40,19 @@ export default function WidgetGallery({ onAdd, embedded, onDragStart }: WidgetGa
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [confirming, setConfirming] = useState<WidgetKind | null>(null);
+  const [tile, setTile] = useState<{ w: number; h: number } | null>(null);
+  const tileObserver = useRef<ResizeObserver | null>(null);
+
+  const measureTile = useCallback((node: HTMLLIElement | null) => {
+    if (!node || typeof ResizeObserver === "undefined") return;
+
+    const read = () => setTile({ w: node.clientWidth, h: node.clientHeight });
+    read();
+    const observer = new ResizeObserver(read);
+    observer.observe(node);
+    tileObserver.current?.disconnect();
+    tileObserver.current = observer;
+  }, []);
   const { announceDrag, cancelPreview } = usePageLayout();
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const [arrowX, setArrowX] = useState<number>(36);
@@ -166,15 +180,24 @@ export default function WidgetGallery({ onAdd, embedded, onDragStart }: WidgetGa
               <p className="inspector-note">{t("gallery.noMatch")}</p>
             ) : (
               <ul className="widget-gallery-grid">
-                {kinds.map((kind) => {
+                {kinds.map((kind, i) => {
                   const View = WIDGET_REGISTRY[kind];
                   const label = t(`widgets.${kind}.label`);
 
+                  // A tile too small to show the widget shows a mark for it instead: a cropped
+                  // corner of something teaches less than a symbol for the whole.
+                  const need = WIDGETS[kind].minPreview;
+                  const cramped = Boolean(need && tile && (tile.w < need.w || tile.h < need.h));
+
                   return (
-                    <li className="widget-card" key={kind} data-widget={kind}>
+                    <li className="widget-card" key={kind} data-widget={kind} ref={i === 0 ? measureTile : undefined}>
                       {/* inert: a preview holds real links and real buttons. */}
                       <div className="widget-card-preview" inert aria-hidden="true">
-                        <View widget={sample(kind, t)} editing={false} preview onChange={() => {}} />
+                        {cramped ? (
+                          <WidgetIcon kind={kind} />
+                        ) : (
+                          <View widget={sample(kind, t)} editing={false} preview onChange={() => {}} />
+                        )}
                       </div>
 
                       {/* Also a button, so the shelf is not pointer-only. */}

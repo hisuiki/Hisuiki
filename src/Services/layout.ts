@@ -111,6 +111,11 @@ interface WidgetSpec {
   sizes: WidgetSize[];
   /** Containers hold other widgets; everything else is a leaf. */
   container?: boolean;
+  /**
+   * The room this widget's preview needs to say anything. A gallery tile smaller than this shows an
+   * icon instead — a cropped corner of a widget teaches less than a symbol for it.
+   */
+  minPreview?: { w: number; h: number };
 }
 
 export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
@@ -130,7 +135,8 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     description: {
       en: "Whatever the current page shows — the feed, a profile, settings.",
       ja: "現在のページの内容（フィード、プロフィール、設定など）。",
-    },
+  },
+    minPreview: { w: 240, h: 140 },
     confirmRemove: true,
     defaultSize: "large",
     sizes: ["large"],
@@ -155,6 +161,7 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
   brand: {
     label: { en: "Brand", ja: "ブランド" },
     description: { en: "The NukaWorks mark.", ja: "NukaWorks のロゴ。" },
+    minPreview: { w: 170, h: 60 },
     confirmRemove: true,
     defaultSize: "small",
     sizes: ["small", "medium"],
@@ -164,7 +171,8 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     description: {
       en: "Copyright, build number and the About link.",
       ja: "著作権表示、ビルド番号、About へのリンク。",
-    },
+  },
+    minPreview: { w: 230, h: 90 },
     confirmRemove: true,
     defaultSize: "medium",
     sizes: ["small", "medium", "large"],
@@ -172,6 +180,7 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
   identity: {
     label: { en: "Name and avatar", ja: "名前とアバター" },
     description: { en: "Your avatar, name, handle and headline.", ja: "アバター、名前、ハンドル、見出し。" },
+    minPreview: { w: 250, h: 130 },
     confirmRemove: true,
     defaultSize: "large",
     sizes: ["medium", "large"],
@@ -193,6 +202,7 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
   heatmap: {
     label: { en: "Activity", ja: "アクティビティ" },
     description: { en: "A year of your posting activity.", ja: "1年間の投稿アクティビティ。" },
+    minPreview: { w: 320, h: 130 },
     confirmRemove: true,
     // The grid is 53 columns wide; anything narrower than full width just scrolls awkwardly.
     defaultSize: "large",
@@ -201,6 +211,7 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
   timeline: {
     label: { en: "Posts and media", ja: "投稿とメディア" },
     description: { en: "Everything you have posted, in tabs.", ja: "投稿とメディアをタブで表示。" },
+    minPreview: { w: 260, h: 190 },
     confirmRemove: true,
     defaultSize: "large",
     sizes: ["large"],
@@ -220,7 +231,8 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     description: {
       en: "A working Winamp, by way of Webamp. Drop in a file, or point it at one.",
       ja: "Webamp による Winamp。ファイルをドロップするか、URL を指定します。",
-    },
+  },
+    minPreview: { w: 275, h: 116 },
     confirmRemove: true,
     // The main window is a fixed 275px wide, so anything under two columns crops it.
     defaultSize: "medium",
