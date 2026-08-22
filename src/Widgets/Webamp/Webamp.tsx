@@ -22,6 +22,8 @@ export default function Webamp({ widget, editing, preview }: WidgetProps) {
   const host = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
   const [scale, setScale] = useState(0);
+  // Bumped to rebuild the player after a resize, so its windows are placed against the new box.
+  const [generation, setGeneration] = useState(0);
 
   const src = String(widget.props?.src ?? "").trim();
   const title = String(widget.props?.title ?? "").trim();
@@ -34,6 +36,12 @@ export default function Webamp({ widget, editing, preview }: WidgetProps) {
   // Still there while arranging, just not taking the pointer: two drag implementations over the
   // same pixels means neither works.
   const inert = editing || preview;
+  // Read from the observer, which outlives the render that set it. Synced after render rather than
+  // during it: a ref written while rendering is a mutation React cannot see.
+  const inertRef = useRef(inert);
+  useEffect(() => {
+    inertRef.current = inert;
+  }, [inert]);
 
   useEffect(() => {
     const node = frame.current;
@@ -47,10 +55,32 @@ export default function Webamp({ widget, editing, preview }: WidgetProps) {
       if (width > 0) setScale(Math.min(1, width / WINDOW_WIDTH));
     };
 
+    /**
+     * Webamp places its windows once, when it is built, and centres them in the host as it was then.
+     * Resizing the widget therefore leaves them where the old box was — outside it, or off to one
+     * side. There is no public way to move them afterwards, so the player is rebuilt.
+     *
+     * Only while the page is being arranged, which is the only time the widget can be resized, and
+     * the only time nobody is listening to it.
+     */
+    let settle: number | undefined;
+    const scheduleRebuild = () => {
+      if (!inertRef.current) return;
+      window.clearTimeout(settle);
+      settle = window.setTimeout(() => setGeneration((n) => n + 1), 250);
+    };
+
     measure();
-    const observer = new ResizeObserver(measure);
+    const observer = new ResizeObserver(() => {
+      measure();
+      scheduleRebuild();
+    });
     observer.observe(node);
-    return () => observer.disconnect();
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(settle);
+    };
   }, []);
 
   useEffect(() => {
@@ -111,7 +141,7 @@ export default function Webamp({ widget, editing, preview }: WidgetProps) {
     // Deliberately not keyed on `scale`: remounting on every resize would restart playback. The
     // first non-zero measurement is what it waits for.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scale > 0, src, title, artist, equalizer, playlist, t]);
+  }, [scale > 0, generation, src, title, artist, equalizer, playlist, t]);
 
   if (failed) return <p className="webamp-widget is-failed">{t("webamp.failed")}</p>;
 

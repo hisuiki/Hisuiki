@@ -246,6 +246,20 @@ export const columnsOf = (item: Widget): number => {
 };
 
 
+/**
+ * How many columns a widget covers.
+ *
+ * Stored as a number rather than one of three named sizes: the column count is the owner's to set,
+ * and a size that only ever means one, two or four columns cannot describe a six-column board. The
+ * named size is the starting point a widget is added at, and the fallback for one placed before
+ * this existed.
+ */
+export function spanOf(item: Widget, columns: number): number {
+  const stored = item.props?.span;
+  const raw = typeof stored === "number" && Number.isFinite(stored) ? Math.round(stored) : SIZE_SPAN[item.size];
+  return Math.min(columns, Math.max(1, raw));
+}
+
 /** The space between a container's children, in pixels. */
 export const gapOf = (item: Widget): number => {
   const stored = item.props?.gap;

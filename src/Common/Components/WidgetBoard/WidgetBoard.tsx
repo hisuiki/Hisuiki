@@ -2,7 +2,6 @@ import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "
 import { useTranslation } from "react-i18next";
 import {
   GRID_COLUMNS,
-  SIZE_SPAN,
   WIDGETS,
   duplicateWidget,
   isContainer,
@@ -12,7 +11,7 @@ import {
   columnsOf,
   gapOf,
   scrollOf,
-  sizeForSpan,
+  spanOf,
   wrapWidgets,
 } from "../../../Services/layout";
 import type { MenuItem, Widget, WidgetBoardProps } from "../../../Types";
@@ -287,12 +286,13 @@ export default function WidgetBoard({
     const box = flipRef.rect(item.id);
     if (!rect || !box) return;
 
-    const cellWidth = rect.width / (columns ?? GRID_COLUMNS);
-    const spanned = Math.max(1, Math.round((event.clientX - box.left) / cellWidth));
+    const total = columns ?? GRID_COLUMNS;
+    const cellWidth = rect.width / total;
+    const next = Math.min(total, Math.max(1, Math.round((event.clientX - box.left) / cellWidth)));
 
-      const next = sizeForSpan(item.kind, Math.min(columns ?? GRID_COLUMNS, spanned));
-      if (next !== item.size) replace(item.id, { ...item, size: next });
-      return;
+    if (next !== spanOf(item, total)) {
+      replace(item.id, { ...item, props: { ...item.props, span: next } });
+    }
   };
 
   /**
@@ -508,7 +508,7 @@ export default function WidgetBoard({
               style={{
                 // A free board places by cell; an ordinary grid by span. A row or a column is laid
                 // out by what is in it, and a grid-column on a flex item is simply ignored.
-                gridColumn: `span ${SIZE_SPAN[widget.size]}`,
+                gridColumn: `span ${spanOf(widget, columns ?? GRID_COLUMNS)}`,
                 ...styleVariables(style),
               }}
               data-widget={widget.kind}
@@ -658,9 +658,9 @@ export default function WidgetBoard({
                   role="slider"
                   tabIndex={0}
                   aria-label={t("board.resize")}
-                  aria-valuenow={SIZE_SPAN[widget.size]}
+                  aria-valuenow={spanOf(widget, columns ?? GRID_COLUMNS)}
                   aria-valuemin={1}
-                  aria-valuemax={GRID_COLUMNS}
+                  aria-valuemax={columns ?? GRID_COLUMNS}
                   onPointerDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -692,8 +692,9 @@ export default function WidgetBoard({
                     e.preventDefault();
 
                     {
-                      const next = sizeForSpan(widget.kind, SIZE_SPAN[widget.size] + step);
-                      if (next !== widget.size) replace(widget.id, { ...widget, size: next });
+                      const total = columns ?? GRID_COLUMNS;
+                      const next = Math.min(total, Math.max(1, spanOf(widget, total) + step));
+                      replace(widget.id, { ...widget, props: { ...widget.props, span: next } });
                     }
                   }}
                 />

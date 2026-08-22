@@ -1,12 +1,12 @@
 import { useTranslation } from "react-i18next";
 import {
   SCROLLS,
-  SIZES,
-  WIDGETS,
   isContainer,
   addWidget,
+  GRID_COLUMNS,
   columnsOf,
   gapOf,
+  spanOf,
   scrollOf,
 } from "../../../Services/layout";
 import {
@@ -20,7 +20,7 @@ import {
   styleOf,
 } from "../../../Services/widgetStyle";
 import { ROUTE_KEYS, titleAction } from "../../../Services/titleWidget";
-import type { WidgetInspectorProps, WidgetSize } from "../../../Types";
+import type { WidgetInspectorProps } from "../../../Types";
 import Inspector from "./Inspector";
 import SiteDefaults from "../SiteDefaults/SiteDefaults";
 import WidgetGallery from "../WidgetGallery/WidgetGallery";
@@ -29,7 +29,6 @@ import { Check, Field, Group, Note, Select, Slider, TextField } from "./fields";
 export default function WidgetInspector({ widget, anchor, variant, title, onChange, onClose }: WidgetInspectorProps) {
   const { t } = useTranslation();
 
-  const spec = WIDGETS[widget.kind];
   const style = styleOf(widget);
   const container = isContainer(widget);
   const action = titleAction(widget);
@@ -42,20 +41,17 @@ export default function WidgetInspector({ widget, anchor, variant, title, onChan
 
   const general = () => (
     <>
-      {/* A container's own size says nothing: what it holds and the flow it holds them in is what
-          decides how much room it takes. */}
-      {!container && (
-        <Select
-          label={t("inspector.size")}
-          value={widget.size}
-          disabled={spec.sizes.length < 2}
-          options={SIZES.filter((size) => spec.sizes.includes(size)).map((size) => ({
-            value: size as WidgetSize,
-            label: t(`inspector.sizes.${size}`),
-          }))}
-          onChange={(size) => onChange({ ...widget, size })}
-        />
-      )}
+      {/* Columns covered, not one of three named sizes: the board's column count is the owner's to
+          set, so the width has to be able to reach it. */}
+      <Slider
+        label={t("inspector.span")}
+        value={spanOf(widget, GRID_COLUMNS * 3)}
+        min={1}
+        max={12}
+        step={1}
+        display={String(spanOf(widget, GRID_COLUMNS * 3))}
+        onChange={(span) => onChange({ ...widget, props: { ...widget.props, span } })}
+      />
 
       {widget.kind === "title" && (
         <>
