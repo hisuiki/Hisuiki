@@ -55,8 +55,8 @@ export interface GridMetrics {
 /** The footprint a resize will land on, in board-relative pixels. */
 export interface ResizePreview {
   id: string;
-  /** The board's own lines while the corner is held, as two background gradients. */
-  lines: { x: string; y: string };
+  /** Where the board's lines fall while the corner is held, in board-relative pixels. */
+  lines: { x: number[]; y: number[] };
   left: number;
   top: number;
   width: number;

@@ -808,6 +808,21 @@ export function moveIntoContainer(root: Widget, id: string, containerId: string)
   return inserted.inserted ? asRoot(root, inserted.widgets) : root;
 }
 
+/** The container holding a widget, or null when it sits on the page itself. */
+export function parentOf(root: Widget, id: string): Widget | null {
+  const search = (parent: Widget): Widget | null => {
+    for (const child of parent.children ?? []) {
+      if (child.id === id) return parent;
+      const found = search(child);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  const holder = search(root);
+  return holder === null || holder.id === root.id ? null : holder;
+}
+
 export function insertInTree(root: Widget, containerId: string, widget: Widget): Widget {
   if (containerId === root.id) {
     const children = root.children ?? [];

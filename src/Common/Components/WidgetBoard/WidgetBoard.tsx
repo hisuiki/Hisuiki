@@ -10,6 +10,7 @@ import {
   removeWidget,
   columnsOf,
   gapOf,
+  parentOf,
   scrollOf,
   cellOf,
   isFree,
@@ -121,6 +122,7 @@ export default function WidgetBoard({
     finalizePreview,
     moveWidgetToContainer,
     insertPreview,
+    root,
   } = usePageLayout();
   const activeDraggingId =
     dragging ??
@@ -423,6 +425,20 @@ export default function WidgetBoard({
         label: t("menu.duplicate"),
         onSelect: () => update(duplicateWidget(widgets, item.id)),
       },
+      // The way back out. Dragging one out works only where the page itself shows through, and
+      // inside a full container there is nowhere to aim at.
+      ...(containerId && containerId !== root.id
+        ? [
+            {
+              label: t("menu.moveOut"),
+              onSelect: () => {
+                const grandparent = parentOf(root, containerId);
+                moveWidgetToContainer(item.id, grandparent?.id ?? root.id);
+                setSelected(new Set());
+              },
+            },
+          ]
+        : []),
       {
         // No submenu: there is one kind of container now.
         label: group.size > 1 ? t("menu.wrapMany", { count: group.size }) : t("menu.wrap"),
@@ -540,11 +556,14 @@ export default function WidgetBoard({
             item — a grid item jumps between cells, and the point of this is to show the result
             settling into place. */}
         {preview !== null && (
-          <div
-            className="board-grid"
-            aria-hidden="true"
-            style={{ backgroundImage: `${preview.lines.x}, ${preview.lines.y}` }}
-          />
+          <div className="board-grid" aria-hidden="true">
+            {preview.lines.x.map((left) => (
+              <span key={`x${left}`} className="board-grid-line" style={{ left }} />
+            ))}
+            {preview.lines.y.map((top) => (
+              <span key={`y${top}`} className="board-grid-line is-row" style={{ top }} />
+            ))}
+          </div>
         )}
 
         {preview !== null && (

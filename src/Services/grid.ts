@@ -107,33 +107,29 @@ export function cellFromPoint(
 }
 
 /**
- * The board's own lines, as two gradients.
+ * Where the board's own lines fall, in board-relative pixels.
  *
- * Drawn from the measured tracks rather than from `100% / columns`: with a gap the tracks are not
- * evenly spaced, and rows are minmax() so any of them can be taller than the rest. A grid you aim at
- * that does not line up with the one you land on is worse than no grid.
+ * Measured tracks rather than `100% / columns`: with a gap the tracks are not evenly spaced, and
+ * rows are minmax() so any of them can be taller than the rest. A grid you aim at that does not line
+ * up with the one you land on is worse than no grid. Each line sits in the middle of a gap.
  */
-export function gridLines(metrics: GridMetrics, extraRows = 8): { x: string; y: string } {
-  const line = (list: number[], gap: number, direction: string) => {
-    const stops: string[] = [];
+export function gridLines(metrics: GridMetrics, extraRows = 8): { x: number[]; y: number[] } {
+  const line = (list: number[], gap: number) => {
+    const offsets: number[] = [];
     let at = 0;
 
-    for (const size of list) {
+    for (const size of list.slice(0, -1)) {
       at += size;
-      stops.push(`transparent ${at}px`, `var(--color-accent-soft) ${at}px`);
-      at += Math.max(1, gap);
-      stops.push(`var(--color-accent-soft) ${at}px`, `transparent ${at}px`);
+      offsets.push(Math.round(at + gap / 2));
+      at += gap;
     }
 
-    return stops.length === 0 ? "none" : `linear-gradient(${direction}, ${stops.join(", ")})`;
+    return offsets;
   };
 
   // A few rows past the last one: a widget can be pulled taller than the board currently is, and
   // the lines should reach wherever it is being pulled to.
   const rows = [...metrics.rows, ...Array.from({ length: extraRows }, () => ROW_HEIGHT)];
 
-  return {
-    x: line(metrics.columns, metrics.columnGap, "to right"),
-    y: line(rows, metrics.rowGap, "to bottom"),
-  };
+  return { x: line(metrics.columns, metrics.columnGap), y: line(rows, metrics.rowGap) };
 }

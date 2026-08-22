@@ -727,12 +727,22 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 
 /* The grid, drawn only while a corner is being pulled. It exists to be aimed at, so its lines come
    from the tracks the browser resolved — a repeating gradient cannot describe a grid with gaps. */
-.board-grid {
+.board-grid { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+/* Faint but visible: a guide, not a decoration. accent-soft alone disappears over a wallpaper. */
+.board-grid-line {
   position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-repeat: no-repeat;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dotted var(--color-accent-strong);
+  opacity: 0.45;
+}
+.board-grid-line.is-row {
+  top: auto;
+  bottom: auto;
+  left: 0;
+  right: 0;
+  border-left: 0;
+  border-top: 1px dotted var(--color-accent-strong);
 }
 .widget-board.is-snapping > .widget { position: relative; z-index: 1; }
 
@@ -1733,8 +1743,9 @@ body:has(.inspector.is-sidebar) .board-settings { display: none; }
   position: absolute;
   z-index: 4;
   pointer-events: none;
-  border: 2px solid var(--color-accent-strong);
-  background: rgba(84, 104, 224, 0.12);
+  /* Solid where the guides are dotted: the footprint is the answer, the grid is the paper. */
+  border: 1px solid var(--color-accent-strong);
+  background: rgba(84, 104, 224, 0.1);
   transition: left 0.12s ease-out, top 0.12s ease-out, width 0.12s ease-out, height 0.12s ease-out;
 }
 .resize-preview-size {

@@ -194,6 +194,7 @@
   "menu": {
     "inspect": "Inspect",
     "duplicate": "Duplicate",
+    "moveOut": "Move out of container",
     "wrap": "Wrap into",
     "wrapMany": "Wrap {{count}} into"
   },

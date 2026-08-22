@@ -194,6 +194,7 @@
   "menu": {
     "inspect": "設定",
     "duplicate": "複製",
+    "moveOut": "コンテナから出す",
     "wrap": "コンテナに入れる",
     "wrapMany": "{{count}} 個をコンテナに入れる"
   },
