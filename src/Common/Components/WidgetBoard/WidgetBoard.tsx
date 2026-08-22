@@ -7,11 +7,11 @@ import {
   duplicateWidget,
   isContainer,
   makeWidget,
-  moveWidget,
   removeWidget,
   columnsOf,
   gapOf,
   scrollOf,
+  cellOf,
   rowsOf,
   spanOf,
   wrapWidgets,
@@ -96,7 +96,12 @@ export default function WidgetBoard({
   };
   // The widget whose corner is being pulled. While this is set the board shows its grid, so there is
   // something to aim at rather than a size that changes for no visible reason.
-  const [resizing, setResizing] = useState<string | null>(null);
+  const [resizing, setResizing] = useState<{
+    id: string;
+    boardWidth: number;
+    left: number;
+    top: number;
+  } | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -237,52 +242,39 @@ export default function WidgetBoard({
     [onChange],
   );
 
-  /**
-   * Reorders as the pointer passes over a widget, rather than waiting for the drop.
-   *
-   * The board rearranging under your hand is what tells you where the widget will land; a drop that
-   * only reveals the result afterwards makes you drop it to find out and undo it if you were wrong.
-   *
-   * The midpoint rule is what stops that turning into a flicker. Once two widgets swap, the one in
-   * your hand is sitting where the other was — still under the pointer, so the next dragover would
-   * swap them straight back, and the pair would trade places for as long as you held still. Taking
-   * a slot only after the pointer is past the middle of it, in the direction you are travelling,
-   * means swapping back requires actually moving back.
-   */
-  const reorderOver = (target: Widget, event: { clientX: number; clientY: number }) => {
-    // dragover fires far faster than the board can be redrawn; one reorder per frame is plenty.
-    if (reorderFrame.current) return;
+  /** The cell under the pointer, for a widget being dragged across the board. */
+  const cellUnder = (event: { clientX: number; clientY: number }, span: number) => {
+    const rect = boardRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+
+    const total = columns ?? GRID_COLUMNS;
+    const col = Math.floor((event.clientX - rect.left) / (rect.width / total)) + 1;
+    const row = Math.floor((event.clientY - rect.top) / ROW_HEIGHT) + 1;
+
+    return {
+      col: Math.min(Math.max(1, col), Math.max(1, total - span + 1)),
+      row: Math.max(1, row),
+    };
+  };
+
+  /** Moves the widget being dragged to wherever the pointer is, in whole cells. */
+  const placeUnder = (event: { clientX: number; clientY: number }) => {
+    if (reorderFrame.current || activeDraggingId === null) return;
     reorderFrame.current = window.requestAnimationFrame(() => {
       reorderFrame.current = 0;
     });
 
-    if (activeDraggingId === null || activeDraggingId === target.id) return;
+    const item = widgets.find((w) => w.id === activeDraggingId);
+    if (!item) return;
 
-    const from = widgets.findIndex((item) => item.id === activeDraggingId);
-    const to = widgets.findIndex((item) => item.id === target.id);
-    if (from === -1 || to === -1 || from === to) return;
+    const total = columns ?? GRID_COLUMNS;
+    const cell = cellUnder(event, spanOf(item, total));
+    if (!cell) return;
 
-    const carried = draggedNode.current?.getBoundingClientRect() ?? flipRef.rect(activeDraggingId);
-    const over = flipRef.rect(target.id);
+    const current = cellOf(item, total, spanOf(item, total));
+    if (current && current.col === cell.col && current.row === cell.row) return;
 
-    if (over) {
-      // Whichever separation is larger is the axis the gesture is actually happening on.
-      const horizontal = carried
-        ? Math.abs(over.left - carried.left) > Math.abs(over.top - carried.top)
-        : over.width >= over.height;
-
-      const forward = from < to;
-
-      if (horizontal) {
-        const middle = over.left + over.width / 2;
-        if (forward ? event.clientX < middle : event.clientX > middle) return;
-      } else {
-        const middle = over.top + over.height / 2;
-        if (forward ? event.clientY < middle : event.clientY > middle) return;
-      }
-    }
-
-    update(moveWidget(widgets, from, to));
+    replace(item.id, { ...item, props: { ...item.props, col: cell.col, row: cell.row } });
   };
 
   /**
@@ -444,6 +436,8 @@ export default function WidgetBoard({
 
           if (containerId && draggingGlobal.kind && draggingGlobal.id) {
             insertPreview(draggingGlobal.id, draggingGlobal.kind, containerId);
+          } else if (activeDraggingId !== null) {
+            placeUnder(e);
           }
         }}
         onDrop={(e) => {
@@ -485,6 +479,42 @@ export default function WidgetBoard({
           <div className="widget-lasso" aria-hidden="true" ref={band} style={{ display: "none" }} />
         )}
 
+        {/* The footprint a resize will land on, drawn over the board in pixels rather than as a grid
+            item — a grid item jumps between cells, and the point of this is to show the result
+            settling into place. */}
+        {resizing !== null && (() => {
+          const item = widgets.find((w) => w.id === resizing.id);
+          if (!item || resizing.boardWidth === 0) return null;
+
+          const total = columns ?? GRID_COLUMNS;
+          const span = spanOf(item, total);
+          const rows = rowsOf(item);
+          const cell = cellOf(item, total, span);
+          const space = gap ?? 12;
+          const cellWidth = (resizing.boardWidth - space * (total - 1)) / total;
+
+          // Where it will be if it has a cell of its own; where it started if the grid places it.
+          const left = cell ? (cell.col - 1) * (cellWidth + space) : resizing.left;
+          const top = cell ? (cell.row - 1) * (ROW_HEIGHT + space) : resizing.top;
+
+          return (
+            <div
+              className="resize-preview"
+              aria-hidden="true"
+              style={{
+                left,
+                top,
+                width: span * cellWidth + (span - 1) * space,
+                height: rows * ROW_HEIGHT + (rows - 1) * space,
+              }}
+            >
+              <span className="resize-preview-size">
+                {span} × {rows}
+              </span>
+            </div>
+          );
+        })()}
+
         {editing && widgets.length === 0 && <EmptyBoard />}
 
         {widgets.map((widget) => {
@@ -523,8 +553,16 @@ export default function WidgetBoard({
               style={{
                 // A free board places by cell; an ordinary grid by span. A row or a column is laid
                 // out by what is in it, and a grid-column on a flex item is simply ignored.
-                gridColumn: `span ${spanOf(widget, columns ?? GRID_COLUMNS)}`,
-                gridRow: `span ${rowsOf(widget)}`,
+                ...(() => {
+                  const total = columns ?? GRID_COLUMNS;
+                  const span = spanOf(widget, total);
+                  const rows = rowsOf(widget);
+                  const cell = cellOf(widget, total, span);
+                  return {
+                    gridColumn: cell ? `${cell.col} / span ${span}` : `span ${span}`,
+                    gridRow: cell ? `${cell.row} / span ${rows}` : `span ${rows}`,
+                  };
+                })(),
                 ...styleVariables(style),
               }}
               data-widget={widget.kind}
@@ -570,9 +608,10 @@ export default function WidgetBoard({
                 if (containerId && draggingGlobal.id === containerId) return;
 
                 if (activeDraggingId !== null) {
+                  // The board places it by cell; a widget under the pointer is just something to
+                  // drop over, not something to swap with.
                   e.preventDefault();
-                  e.stopPropagation();
-                  reorderOver(widget, e);
+                  placeUnder(e);
                 } else if (containerId && draggingGlobal.kind && draggingGlobal.id) {
                   e.preventDefault();
                   e.stopPropagation();
@@ -686,10 +725,18 @@ export default function WidgetBoard({
                       // Capture is an optimisation here; the window listeners are what guarantee
                       // the release.
                     }
-                    setResizing(widget.id);
+
+                    const board = boardRef.current?.getBoundingClientRect();
+                    const box = flipRef.rect(widget.id);
+                    setResizing({
+                      id: widget.id,
+                      boardWidth: board?.width ?? 0,
+                      left: board && box ? box.left - board.left : 0,
+                      top: board && box ? box.top - board.top : 0,
+                    });
                   }}
                   onPointerMove={(e) => {
-                    if (resizing !== widget.id) return;
+                    if (resizing?.id !== widget.id) return;
                     resizeTo(widget, e);
                   }}
                   onPointerUp={(e) => {

@@ -260,6 +260,25 @@ export function spanOf(item: Widget, columns: number): number {
   return Math.min(columns, Math.max(1, raw));
 }
 
+/**
+ * Where a widget sits on the grid, when it has been put somewhere.
+ *
+ * Absent until something is dragged: a widget with no cell of its own is placed by the grid's own
+ * flow, so a page nobody has arranged still reads top to bottom. Once moved, it stays where it was
+ * put and the rest flows around it.
+ */
+export function cellOf(item: Widget, columns: number, span: number): { col: number; row: number } | null {
+  const col = item.props?.col;
+  const row = item.props?.row;
+  if (typeof col !== "number" || typeof row !== "number") return null;
+  if (!Number.isFinite(col) || !Number.isFinite(row)) return null;
+
+  return {
+    col: Math.min(Math.max(1, Math.round(col)), Math.max(1, columns - span + 1)),
+    row: Math.min(500, Math.max(1, Math.round(row))),
+  };
+}
+
 /** The height of one grid row, in pixels. What dragging a corner downwards snaps to. */
 export const ROW_HEIGHT = 72;
 

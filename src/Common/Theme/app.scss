@@ -1729,3 +1729,26 @@ body:has(.inspector.is-sidebar) .board-settings { display: none; }
 
 /* Filling the rows it was given, so a height set by dragging is the widget's height. */
 .widget-board[data-flow="grid"] > .widget { min-height: 0; }
+
+
+/* The footprint a resize will land on. It eases between cells, which is the whole point — the widget
+   itself snaps, and this is what shows where the snap is going. */
+.resize-preview {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  border: 2px solid var(--color-accent-strong);
+  background: rgba(84, 104, 224, 0.12);
+  transition: left 0.12s ease-out, top 0.12s ease-out, width 0.12s ease-out, height 0.12s ease-out;
+}
+.resize-preview-size {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 0.1em 0.4em;
+  background: var(--color-accent);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  text-shadow: none;
+}
