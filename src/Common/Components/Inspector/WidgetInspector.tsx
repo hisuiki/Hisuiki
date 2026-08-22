@@ -3,10 +3,8 @@ import {
   SCROLLS,
   isContainer,
   addWidget,
-  GRID_COLUMNS,
   columnsOf,
   gapOf,
-  spanOf,
   scrollOf,
 } from "../../../Services/layout";
 import {
@@ -41,17 +39,6 @@ export default function WidgetInspector({ widget, anchor, variant, title, onChan
 
   const general = () => (
     <>
-      {/* Columns covered, not one of three named sizes: the board's column count is the owner's to
-          set, so the width has to be able to reach it. */}
-      <Slider
-        label={t("inspector.span")}
-        value={spanOf(widget, GRID_COLUMNS * 3)}
-        min={1}
-        max={12}
-        step={1}
-        display={String(spanOf(widget, GRID_COLUMNS * 3))}
-        onChange={(span) => onChange({ ...widget, props: { ...widget.props, span } })}
-      />
 
       {widget.kind === "title" && (
         <>

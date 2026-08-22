@@ -180,8 +180,7 @@
     "fontSample": "The quick brown fox jumps over the lazy dog",
     "custom": "Custom colour",
     "inherited": "inherited",
-    "page": "Page inspector",
-    "span": "Width (columns)"
+    "page": "Page inspector"
   },
   "webamp": {
     "untitled": "Untitled",
