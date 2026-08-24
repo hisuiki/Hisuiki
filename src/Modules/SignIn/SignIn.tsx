@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
-import { authClient } from "../../Services/authClient";
-import { RETURN_PARAM, useAuth } from "../../Services/auth";
-import { Link, useRouter } from "../../Services/router";
-import { apiUrl } from "../../Services/config";
+import { authClient } from "../../Services/AuthClient";
+import { RETURN_PARAM, useAuth } from "../../Services/AuthProvider";
+import { AppLink, useRouter } from "../../Services/AppRouter";
+import { apiUrl } from "../../Services/AppConfig";
 
 export interface SignInProps {
   isJapanese: boolean;
@@ -133,9 +133,9 @@ export default function SignIn({ isJapanese }: SignInProps) {
           {text.signedInAs} <strong>{auth.user!.name || auth.user!.email}</strong>
         </p>
         <div className="editor-actions">
-          <Link href={isJapanese ? "/ja" : "/"} className="editor-btn editor-btn-cancel">
+          <AppLink href={isJapanese ? "/ja" : "/"} className="editor-btn editor-btn-cancel">
             {text.home}
-          </Link>
+          </AppLink>
           <button
             type="button"
             className="editor-btn editor-btn-primary"

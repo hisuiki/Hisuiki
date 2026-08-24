@@ -1,8 +1,9 @@
 import { useTranslation } from "react-i18next";
 import ExternalLink from "../../Common/Components/ExternalLink/ExternalLink";
-import { Link, apexHref, useRouter } from "../../Services/router";
-import { ROUTES, titleAction } from "../../Services/titleWidget";
-import type { WidgetProps } from "../../Types";
+import { usePageLayout } from "../../Services/PageLayoutProvider";
+import { AppLink, apexHref } from "../../Services/AppRouter";
+import { ROUTES, titleAction } from "../../Services/TitleWidgetUtils";
+import type { WidgetProps } from "../../Types/TypeRegistry";
 
 /**
  * A word that goes somewhere.
@@ -12,7 +13,7 @@ import type { WidgetProps } from "../../Types";
  */
 export default function Title({ widget }: WidgetProps) {
   const { t, i18n } = useTranslation();
-  const { pathname } = useRouter();
+  const { displayPathname } = usePageLayout();
 
   const action = titleAction(widget);
   const label = String(widget.props?.label ?? "").trim();
@@ -34,12 +35,12 @@ export default function Title({ widget }: WidgetProps) {
   // On a profile subdomain "/" is that profile, so the app's own pages point at the apex.
   const japanese = i18n.language === "ja";
   const localised = japanese && route ? (path === "/" ? "/ja" : `${path}/ja`) : path;
-  const here = (pathname.replace(/^\/users\/[^/]+/, "") || "/").toLowerCase();
+  const here = (displayPathname.replace(/^\/users\/[^/]+/, "") || "/").toLowerCase();
   const active = route ? route.active(here) : here === path.toLowerCase();
 
   return (
-    <Link href={apexHref(localised)} className={`pivot-item ${active ? "is-active" : ""}`.trim()}>
+    <AppLink href={apexHref(localised)} className={`pivot-item ${active ? "is-active" : ""}`.trim()}>
       {label || (route ? t(`routes.${action.kind === "route" ? action.route : ""}`) : path)}
-    </Link>
+    </AppLink>
   );
 }

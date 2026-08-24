@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { applyPaletteFrom } from "../../../Services/palette";
-import { resolveWallpaperUrl } from "../../../Services/wallpaper";
+import { applyPaletteFrom } from "../../../Services/PaletteUtils";
+import { resolveWallpaperUrl } from "../../../Services/WallpaperUtils";
+import { usePageLayout } from "../../../Services/PageLayoutProvider";
 
 /** Flat darkening applied to every wallpaper; the low-contrast text tiers need the headroom. */
 const BASE_SCRIM = 0.2;
@@ -13,6 +14,7 @@ const MAX_SCRIM = 0.85;
  * rather than a CSS background because background-image cannot be transitioned.
  */
 export default function Wallpaper() {
+  const { page } = usePageLayout();
   const [url, setUrl] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [scrim, setScrim] = useState(BASE_SCRIM);
@@ -24,14 +26,17 @@ export default function Wallpaper() {
   useEffect(() => {
     let active = true;
 
-    void resolveWallpaperUrl().then((next) => {
+    setLoaded(false);
+    setCors(true);
+
+    void resolveWallpaperUrl(page.wallpaper).then((next) => {
       if (active) setUrl(next);
     });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [page.wallpaper?.source, page.wallpaper?.url]);
 
   const reveal = useCallback((img: HTMLImageElement, sampleable: boolean) => {
     setLoaded(true);

@@ -4,12 +4,12 @@ import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
 import MdContentRenderer from "../../Common/Components/MdContentRenderer/MdContentRenderer";
 import PageEditor from "../../Common/Components/PageEditor/PageEditor";
 import PageHistory from "../../Common/Components/PageHistory/PageHistory";
-import { Link } from "../../Services/router";
-import { useAuth } from "../../Services/auth";
-import { fetchArticles, fetchPage } from "../../Services/api";
-import { getSiteHandle } from "../../Services/router";
-import { articleRoute, postsFor } from "../../Services/paths";
-import type { ArticleMetadata, Page } from "../../Types";
+import { AppLink } from "../../Services/AppRouter";
+import { useAuth } from "../../Services/AuthProvider";
+import { fetchArticles, fetchPage } from "../../Services/ContentApiService";
+import { getSiteHandle } from "../../Services/AppRouter";
+import { articleRoute, postsFor } from "../../Services/PathUtils";
+import type { ArticleMetadata, Page } from "../../Types/TypeRegistry";
 
 export interface FileViewerProps {
   /** Blob path of the page to show, e.g. "posts/welcome.ja.md". */
@@ -196,37 +196,37 @@ export default function FileViewer({ slug, isHome, isJapanese = false }: FileVie
                 <div className="article-nav-row">
                   <div className="nav-cell nav-cell-prev">
                     {prevArticle && (
-                      <Link href={articleRoute(prevArticle.slug)} className="nav-link prev-link">
+                      <AppLink href={articleRoute(prevArticle.slug)} className="nav-link prev-link">
                         ← {prevArticle.title}
-                      </Link>
+                      </AppLink>
                     )}
                   </div>
 
                   <div className="nav-cell nav-cell-middle">
                     {isBlogPost && (
                       <>
-                        <Link href={japanese ? "/posts/ja" : "/posts"} className="breadcrumb-link">
+                        <AppLink href={japanese ? "/posts/ja" : "/posts"} className="breadcrumb-link">
                           Posts Index
-                        </Link>
+                        </AppLink>
                         <span className="nav-separator">|</span>
                       </>
                     )}
                     {!isHome ? (
-                      <Link href={japanese ? "/ja" : "/"} className="breadcrumb-link">
+                      <AppLink href={japanese ? "/ja" : "/"} className="breadcrumb-link">
                         Home
-                      </Link>
+                      </AppLink>
                     ) : (
-                      <Link href="/posts" className="breadcrumb-link">
+                      <AppLink href="/posts" className="breadcrumb-link">
                         Explore Posts →
-                      </Link>
+                      </AppLink>
                     )}
                   </div>
 
                   <div className="nav-cell nav-cell-next">
                     {nextArticle && (
-                      <Link href={articleRoute(nextArticle.slug)} className="nav-link next-link">
+                      <AppLink href={articleRoute(nextArticle.slug)} className="nav-link next-link">
                         {nextArticle.title} →
-                      </Link>
+                      </AppLink>
                     )}
                   </div>
                 </div>

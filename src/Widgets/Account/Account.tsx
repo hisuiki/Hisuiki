@@ -3,9 +3,10 @@ import { useTranslation } from "react-i18next";
 import Anchored from "../../Common/Components/Anchored/Anchored";
 import HeadlineLogo from "../../Common/Components/HeadlineLogo/HeadlineLogo";
 import SmartImage from "../../Common/Components/SmartImage/SmartImage";
-import { Link, profileHref } from "../../Services/router";
-import { fetchMyProfile } from "../../Services/profile";
-import { signInHref, useAuth } from "../../Services/auth";
+import { apexHref, AppLink, profileHref } from "../../Services/AppRouter";
+import { fetchMyProfile } from "../../Services/ProfileService";
+import { signInHref, useAuth } from "../../Services/AuthProvider";
+import { fetchSite } from "../../Services/SiteService";
 
 /**
  * The account tile, and the menu behind it.
@@ -22,14 +23,17 @@ export default function Account() {
   const tileRef = useRef<HTMLButtonElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [handle, setHandle] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     if (!auth.isSignedIn) return;
 
     let active = true;
-    fetchMyProfile()
-      .then((profile) => {
-        if (active && profile.handle) setHandle(profile.handle);
+    Promise.all([fetchMyProfile(), fetchSite()])
+      .then(([profile, site]) => {
+        if (!active) return;
+        if (profile.handle) setHandle(profile.handle);
+        setIsOwner(site.isOwner);
       })
       .catch(() => {
         // Without a handle the menu still works; only the profile link is unavailable.
@@ -100,13 +104,19 @@ export default function Account() {
                 {t("account.profile")}
               </a>
 
-              <Link href="/customize" className="metro-dropdown-item" onClick={() => setOpen(false)}>
-                {t("account.customize")}
-              </Link>
+              <AppLink href={apexHref("/boards")} className="metro-dropdown-item" onClick={() => setOpen(false)}>
+                {t("account.boards", { defaultValue: "Boards" })}
+              </AppLink>
 
-              <Link href="/settings" className="metro-dropdown-item" onClick={() => setOpen(false)}>
+              {(isOwner || import.meta.env.DEV) && (
+                <AppLink href={apexHref("/admin")} className="metro-dropdown-item" onClick={() => setOpen(false)}>
+                  {t("account.admin", { defaultValue: "Admin" })}
+                </AppLink>
+              )}
+
+              <AppLink href="/settings" className="metro-dropdown-item" onClick={() => setOpen(false)}>
                 {t("account.settings")}
-              </Link>
+              </AppLink>
 
               <button
                 className="metro-dropdown-item"

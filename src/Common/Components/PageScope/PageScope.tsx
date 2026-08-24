@@ -1,11 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { fetchFeed } from "../../../Services/api";
-import { fetchMyProfile, fetchProfile } from "../../../Services/profile";
-import { usePageLayout } from "../../../Services/pageLayout";
-import { resolveRoute, useRouter } from "../../../Services/router";
-import { useAuth } from "../../../Services/auth";
-import type { ProfileScope } from "../../../Types";
-import { ProfileScopeProvider } from "../../../Widgets";
+import { fetchFeed } from "../../../Services/ContentApiService";
+import { fetchMyProfile, fetchProfile } from "../../../Services/ProfileService";
+import { usePageLayout } from "../../../Services/PageLayoutProvider";
+import { resolveRoute } from "../../../Services/AppRouter";
+import { useAuth } from "../../../Services/AuthProvider";
+import type { ProfileScope } from "../../../Types/TypeRegistry";
+import { ProfileScopeProvider } from "../../../Widgets/WidgetRegistry";
 
 /**
  * The profile the page is about, in scope for every widget on it.
@@ -16,13 +16,16 @@ import { ProfileScopeProvider } from "../../../Widgets";
  * rather than of any one widget.
  */
 export default function PageScope({ children }: { children: ReactNode }) {
-  const { pathname } = useRouter();
-  const route = resolveRoute(pathname);
   const auth = useAuth();
-  const { setEditing } = usePageLayout();
+  const { setEditing, board, displayPathname } = usePageLayout();
+  const route = resolveRoute(displayPathname);
 
   const wanted =
-    route?.kind === "profile" ? route.handle : route?.kind === "customize" ? "@me" : null;
+    route?.kind === "profile" || route?.kind === "board"
+      ? route.handle
+      : route?.kind === "board-edit"
+        ? board?.owner.profile?.handle ?? null
+        : null;
 
   // Tagged with what it was loaded for, so leaving a profile clears the scope by derivation rather
   // than by writing state from an effect.
@@ -67,7 +70,9 @@ export default function PageScope({ children }: { children: ReactNode }) {
   }, [wanted]);
 
   const canEdit =
-    route?.kind === "customize" && auth.isSignedIn && (!scope || scope.profile.userId === auth.user?.id);
+    route?.kind === "board-edit" &&
+    auth.isSignedIn &&
+    board !== null;
 
   useEffect(() => {
     setEditing(Boolean(canEdit));

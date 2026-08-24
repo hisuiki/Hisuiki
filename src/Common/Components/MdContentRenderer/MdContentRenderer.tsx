@@ -3,8 +3,8 @@ import { Fragment, useEffect, useMemo, useRef } from "react";
 import hljs from "highlight.js/lib/common";
 import InfoBubble from "../InfoBubble/InfoBubble";
 import PostsIndex from "../PostsIndex/PostsIndex";
-import { useExternalLink } from "../../../Services/externalLink";
-import { useRouter } from "../../../Services/router";
+import { useExternalLink } from "../../../Services/ExternalLinkProvider";
+import { useRouter } from "../../../Services/AppRouter";
 
 /**
  * Renders the HTML the API produces for a markdown page. Custom tags (`<Info>`, `<PostsIndex />`)

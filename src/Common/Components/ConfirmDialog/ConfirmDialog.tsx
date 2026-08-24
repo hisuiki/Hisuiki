@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import type { ConfirmDialogProps } from "../../../Types";
+import type { ConfirmDialogProps } from "../../../Types/TypeRegistry";
 
 /** Modal, and focused on Cancel: the safe answer should be the one a stray Return key gives. */
 export default function ConfirmDialog({

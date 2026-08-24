@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
 import Skeleton from "../../Common/Components/Skeleton/Skeleton";
-import { useAuth } from "../../Services/auth";
-import { apiUrl } from "../../Services/config";
-import { fetchMyProfile, updateMyProfile } from "../../Services/profile";
-import type { ProfileData } from "../../Types";
+import { useAuth } from "../../Services/AuthProvider";
+import { apiUrl } from "../../Services/AppConfig";
+import { fetchMyProfile, updateMyProfile } from "../../Services/ProfileService";
+import type { ProfileData } from "../../Types/TypeRegistry";
 
 /** The account. How a page looks is decided on the page, in the Inspector. */
 export default function Settings() {

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import SmartImage from "../../Common/Components/SmartImage/SmartImage";
-import { assetUrl } from "../../Services/config";
-import { useProfileScope } from "../context";
+import { assetUrl } from "../../Services/AppConfig";
+import { useProfileScope } from "../ProfileScopeProvider";
 
 /** Everything posted, in two tabs. */
 export default function Timeline() {

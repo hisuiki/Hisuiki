@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import type { WidgetProps } from "../../Types";
+import type { WidgetProps } from "../../Types/TypeRegistry";
 
 /** A heading and some words, written in place. */
 export default function Text({ widget, editing, onChange }: WidgetProps) {

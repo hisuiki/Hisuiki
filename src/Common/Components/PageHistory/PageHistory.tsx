@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Skeleton from "../Skeleton/Skeleton";
 import InfoBubble from "../InfoBubble/InfoBubble";
 import MdContentRenderer from "../MdContentRenderer/MdContentRenderer";
-import { previewMarkdown } from "../../../Services/api";
+import { previewMarkdown } from "../../../Services/ContentApiService";
 import {
   getRevisionDiff,
   getRevisions,
@@ -11,7 +11,7 @@ import {
   type DiffHunk,
   type DiffLineType,
   type PageRevision,
-} from "../../../Services/history";
+} from "../../../Services/HistoryService";
 
 export interface PageHistoryProps {
   slug: string;

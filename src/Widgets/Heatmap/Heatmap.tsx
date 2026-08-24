@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import ActivityHeatmap from "../../Common/Components/ActivityHeatmap/ActivityHeatmap";
-import { useProfileScope } from "../context";
+import { useProfileScope } from "../ProfileScopeProvider";
 
 /** A year of posting, in the GitHub grid. */
 export default function Heatmap() {

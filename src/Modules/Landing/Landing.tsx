@@ -1,169 +1,164 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import PostComposer from "../../Common/Components/PostComposer/PostComposer";
+import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
 import Skeleton from "../../Common/Components/Skeleton/Skeleton";
 import SmartImage from "../../Common/Components/SmartImage/SmartImage";
-import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
-import { fetchFeed } from "../../Services/api";
-import { assetUrl } from "../../Services/config";
-import type { PostSummary } from "../../Types";
+import { fetchBoards } from "../../Services/BoardService";
+import { boardHref, AppLink } from "../../Services/AppRouter";
+import type { BoardSummary } from "../../Types/TypeRegistry";
+import BoardPreview from "../../Common/Components/BoardPreview/BoardPreview";
 
 export interface LandingProps {
-  tab: "home" | "explore" | "about";
+  tab: "home" | "explore";
+  config?: {
+    sort?: "trending" | "recent" | "random";
+    limit?: number;
+    heading?: string;
+    showHeading?: boolean;
+    showControls?: boolean;
+  };
 }
 
 const TEXT = {
   en: {
-    forYou: "For You",
-    empty: "Nothing here yet.",
-    error: "Could not load posts: ",
-    aboutTitle: "What Hisuiki is",
-    aboutLead:
-      "Hisuiki is a media sharing and blogging platform. Post photos, write articles, and comment on what other people share.",
-    aboutProfile: "Every account gets its own space at {handle}.hisuiki.com — its own pages, its own wallpaper, its own stylesheet.",
-    aboutOwnership: "Your writing is stored as plain markdown files you can fetch and keep, and every edit is kept as a version.",
-    signedOutHint: "Sign in to post, comment, and make the place yours.",
+    title: "Boards for you",
+    explore: "Explore boards",
+    lead: "Open an experience made from images, words, media, and widgets.",
+    trending: "Trending",
+    random: "Surprise me",
+    empty: "No published boards yet.",
+    error: "Could not load boards: ",
+    views: "views",
+    by: "by",
   },
   ja: {
-    forYou: "おすすめ",
-    empty: "まだ何もありません。",
-    error: "投稿を読み込めませんでした: ",
-    aboutTitle: "Hisuikiとは",
-    aboutLead: "Hisuikiはメディア共有とブログのプラットフォームです。写真を投稿し、記事を書き、他の人の投稿にコメントできます。",
-    aboutProfile: "アカウントごとに {handle}.hisuiki.com の専用スペースがあります。ページも壁紙もスタイルも自分のものです。",
-    aboutOwnership: "書いたものはマークダウンのファイルとして保存され、編集のたびにバージョンが残ります。",
-    signedOutHint: "サインインすると、投稿・コメント・カスタマイズができます。",
+    title: "おすすめのボード",
+    explore: "ボードを見つける",
+    lead: "画像、言葉、メディア、ウィジェットで作られた体験を開きましょう。",
+    trending: "トレンド",
+    random: "ランダム",
+    empty: "公開されたボードはまだありません。",
+    error: "ボードを読み込めませんでした: ",
+    views: "閲覧",
+    by: "作成",
   },
 } as const;
 
-/** A relative time, because a feed is read in terms of "how long ago", not calendar dates. */
-function timeAgo(iso: string, japanese: boolean): string {
-  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  const units: [number, string, string][] = [
-    [60, "s", "秒"],
-    [3600, "m", "分"],
-    [86400, "h", "時間"],
-    [604800, "d", "日"],
-  ];
-
-  for (const [limit, short, ja] of units) {
-    if (seconds < limit) {
-      const divisor = limit === 60 ? 1 : limit / 60;
-      return `${Math.floor(seconds / divisor)}${japanese ? ja : short}`;
-    }
-  }
-  return new Intl.DateTimeFormat(japanese ? "ja-JP" : "en-US", { month: "short", day: "numeric" })
-    .format(new Date(iso));
-}
-
-/**
- * The signed-out and signed-in landing surface.
- *
- * "home" is the feed with the composer on top. "explore" is the same content without whatever
- * ranking home applies — deliberately the plain reverse-chronological view, so there is always a way
- * to see what is actually being posted rather than what an algorithm chose. "about" explains the
- * site to someone who has just arrived.
- */
-export default function Landing({ tab }: LandingProps) {
+/** The front page discovers experiences, never a stream of tweet-shaped posts. */
+export default function Landing({ tab, config }: LandingProps) {
   const { i18n } = useTranslation();
-  const isJapanese = i18n.language === "ja";
-  const text = isJapanese ? TEXT.ja : TEXT.en;
-
-  // Tagged with the tab it was loaded for, so switching tabs resets the feed by derivation rather
-  // than through an effect that sets state synchronously and cascades a render.
+  const text = i18n.language === "ja" ? TEXT.ja : TEXT.en;
+  const [selectedSort, setSelectedSort] = useState<"trending" | "random">(
+    config?.sort === "random" ? "random" : "trending",
+  );
+  const [randomRun, setRandomRun] = useState(0);
+  const showHeading = config?.showHeading !== false;
+  const showControls = config?.showControls ?? (config?.sort === undefined && tab === "explore");
+  const activeSort = showControls
+    ? selectedSort
+    : (config?.sort ?? (tab === "home" ? "trending" : selectedSort));
+  const limit = Math.min(50, Math.max(1, Math.round(config?.limit ?? 24)));
+  const requestKey = `${tab}:${activeSort}:${limit}:${randomRun}`;
   const [loaded, setLoaded] = useState<{
-    tab: string;
-    posts: PostSummary[] | null;
+    key: string;
+    boards: BoardSummary[] | null;
     error: string | null;
-  }>({ tab, posts: null, error: null });
-
-  const { posts, error } = loaded.tab === tab ? loaded : { posts: null, error: null };
-  const loading = posts === null && error === null;
-
-  const showsFeed = tab !== "about";
+  }>({ key: "", boards: null, error: null });
+  const { boards, error } = loaded.key === requestKey
+    ? loaded
+    : { boards: null, error: null };
 
   useEffect(() => {
-    if (!showsFeed) return;
+    if (config?.sort === "trending" || config?.sort === "random") {
+      setSelectedSort(config.sort);
+    }
+  }, [config?.sort]);
 
+  useEffect(() => {
     let active = true;
-
-    fetchFeed(tab === "explore" ? { sort: "recent" } : {})
+    fetchBoards({ feed: tab, sort: activeSort, limit })
       .then((next) => {
-        if (active) setLoaded({ tab, posts: next, error: null });
+        if (active) setLoaded({ key: requestKey, boards: next, error: null });
       })
       .catch((err: unknown) => {
         if (active) {
-          setLoaded({ tab, posts: null, error: err instanceof Error ? err.message : String(err) });
+          setLoaded({
+            key: requestKey,
+            boards: null,
+            error: err instanceof Error ? err.message : String(err),
+          });
         }
       });
+    return () => { active = false; };
+  }, [tab, activeSort, limit, randomRun, requestKey]);
 
-    return () => {
-      active = false;
-    };
-  }, [showsFeed, tab]);
-
-  // Prepended rather than refetched: the post is already in hand, and a refetch can race the write.
-  const onPosted = useCallback((post: PostSummary) => {
-    setLoaded((current) => ({ ...current, posts: [post, ...(current.posts ?? [])] }));
-  }, []);
+  const heading = config?.heading?.trim() || (tab === "home" ? text.title : text.explore);
 
   return (
-    <div className="file-content landing" data-phase="ready">
-      {/* Explore is the same feed with the ranking off. It carries no caption: the tab it was
-          reached from already says what it is, and a line explaining the page to someone who chose
-          it is the sort of thing you stop reading after the first visit. */}
-      {tab === "home" && <PostComposer isJapanese={isJapanese} onPosted={onPosted} />}
+    <div className="file-content landing board-feed" data-phase="ready">
+      {(showHeading || showControls) && (
+        <header className="board-feed-head">
+          {showHeading && (
+            <div>
+              <h1>{heading}</h1>
+              <p>{text.lead}</p>
+            </div>
+          )}
+          {showControls && (
+            <div className="board-feed-modes" role="group" aria-label={text.explore}>
+              <button
+                type="button"
+                className={activeSort === "trending" ? "is-active" : ""}
+                onClick={() => setSelectedSort("trending")}
+              >
+                {text.trending}
+              </button>
+              <button
+                type="button"
+                className={activeSort === "random" ? "is-active" : ""}
+                onClick={() => {
+                  setSelectedSort("random");
+                  setRandomRun((value) => value + 1);
+                }}
+              >
+                {text.random}
+              </button>
+            </div>
+          )}
+        </header>
+      )}
 
-      {error !== null ? (
+      {error ? (
         <InfoBubble title={`${text.error}${error}`} className="md-component-danger" />
-      ) : loading ? (
-        <div className="feed" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
-            <article className="feed-post" key={i}>
-              <Skeleton className="skeleton-meta" width="140px" />
-              <Skeleton className="skeleton-line" width="95%" />
-              <Skeleton className="skeleton-line" width="70%" />
-            </article>
-          ))}
+      ) : boards === null ? (
+        <div className="board-feed-grid" aria-hidden="true">
+          {[0, 1, 2, 3].map((item) => <Skeleton key={item} width="100%" height="220px" />)}
         </div>
-      ) : (posts ?? []).length === 0 ? (
+      ) : boards.length === 0 ? (
         <p className="loading-text">{text.empty}</p>
       ) : (
-        <div className="feed">
-          {(posts ?? []).map((post) => {
-            const handle = post.author.profile?.handle;
+        <div className="board-feed-grid">
+          {boards.map((board, index) => {
+            const handle = board.owner.profile?.handle;
+            if (!handle) return null;
             return (
-              <article className="feed-post" key={post.id} data-post={post.id}>
-                <header className="feed-post-head">
-                  {post.author.image && (
-                    <img className="feed-avatar" src={post.author.image} alt="" width={40} height={40} />
-                  )}
-                  <span className="feed-author">{post.author.name || handle || "Someone"}</span>
-                  {handle && <span className="feed-handle">@{handle}</span>}
-                  <span className="feed-time">{timeAgo(post.createdAt, isJapanese)}</span>
-                </header>
-
-                {post.title && <h3 className="feed-title">{post.title}</h3>}
-
-                {/* The first image only: a card is a preview, and the post's page has the rest. */}
-                {post.media[0] && (
-                  <SmartImage
-                    src={assetUrl(post.media[0].thumbPath ?? post.media[0].path)}
-                    alt={post.media[0].alt}
-                    block
-                  />
-                )}
-
-                {/* Server-sanitised: renderUserContent strips anything outside its allow-list and
-                    scopes the post's own stylesheet to this data-post container. */}
-                <div className="feed-body" dangerouslySetInnerHTML={{ __html: post.renderedHtml ?? "" }} />
-
-                <footer className="feed-post-foot">
-                  <span>♥ {post._count.likes}</span>
-                  <span>💬 {post._count.comments}</span>
-                  <span>↻ {post._count.reposts}</span>
-                </footer>
-              </article>
+              <AppLink
+                key={board.id}
+                href={boardHref(handle, board.slug)}
+                className="board-discovery-card"
+                style={{ "--board-order": index } as React.CSSProperties}
+              >
+                <BoardPreview layout={board.layout} />
+                <span className="board-discovery-copy">
+                  <strong>{board.title}</strong>
+                  {board.description && <span>{board.description}</span>}
+                </span>
+                <span className="board-discovery-meta">
+                  {board.owner.image && <SmartImage src={board.owner.image} alt="" width="24" height="24" />}
+                  <span>{text.by} @{handle}</span>
+                  <span className="board-discovery-views">{board.viewCount} {text.views}</span>
+                </span>
+              </AppLink>
             );
           })}
         </div>

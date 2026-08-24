@@ -1,6 +1,6 @@
 import ExternalLink from "../../Common/Components/ExternalLink/ExternalLink";
 import SmartImage from "../../Common/Components/SmartImage/SmartImage";
-import { assetUrl } from "../../Services/config";
+import { assetUrl } from "../../Services/AppConfig";
 
 /** The NukaWorks mark. */
 export default function Brand() {

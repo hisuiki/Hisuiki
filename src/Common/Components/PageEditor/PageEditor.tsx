@@ -1,11 +1,11 @@
-import { getSiteHandle } from '../../../Services/router';
+import { getSiteHandle } from '../../../Services/AppRouter';
 import { useCallback, useEffect, useRef, useState } from "react";
 import Skeleton from "../Skeleton/Skeleton";
 import InfoBubble from "../InfoBubble/InfoBubble";
 import MdContentRenderer from "../MdContentRenderer/MdContentRenderer";
-import { fetchRawPage, previewMarkdown, savePage } from "../../../Services/api";
-import { useAuth } from "../../../Services/auth";
-import { loadMonaco, type MonacoEditor, type MonacoRange } from "../../../Services/monaco";
+import { fetchRawPage, previewMarkdown, savePage } from "../../../Services/ContentApiService";
+import { useAuth } from "../../../Services/AuthProvider";
+import { loadMonaco, type MonacoEditor, type MonacoRange } from "../../../Services/MonacoService";
 
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const NUMBERED_LIST_PREFIX = /^\d+\.\s+/;
@@ -362,7 +362,7 @@ export default function PageEditor({
           <button type="button" className="toolbar-btn toolbar-btn-italic" title="Italic" onClick={() => wrapSelection("*", "*", "italic text")}>I</button>
           <button type="button" className="toolbar-btn" title="Heading" onClick={() => prefixLines("## ")}>H</button>
           <span className="toolbar-sep" />
-          <button type="button" className="toolbar-btn" title="Link" onClick={() => wrapSelection("[", "](https://)", "link text")}>Link</button>
+          <button type="button" className="toolbar-btn" title="AppLink" onClick={() => wrapSelection("[", "](https://)", "link text")}>AppLink</button>
           <button type="button" className="toolbar-btn" title="Image" onClick={() => wrapSelection("![", "](https://)", "alt text")}>Image</button>
           <button type="button" className="toolbar-btn toolbar-btn-code" title="Inline code" onClick={() => wrapSelection("`", "`", "code")}>Code</button>
           <span className="toolbar-sep" />

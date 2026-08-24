@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { ContextMenuProps } from "../../../Types";
+import type { ContextMenuProps } from "../../../Types/TypeRegistry";
 
 /** Kept off the edges: a menu opened near the bottom right should not open off-screen. */
 const MARGIN = 8;

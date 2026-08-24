@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import type { WidgetKind } from "../../../Types";
+import type { WidgetKind } from "../../../Types/TypeRegistry";
 
 /** Simple marks, drawn rather than typed, so no font has to have the glyph. */
 const PATHS: Partial<Record<WidgetKind, string>> = {
@@ -8,6 +8,7 @@ const PATHS: Partial<Record<WidgetKind, string>> = {
   heatmap: "M8 16h6v6H8zM18 16h6v6h-6zM28 16h6v6h-6zM38 16h6v6h-6zM8 28h6v6H8zM18 28h6v6h-6zM28 28h6v6h-6z",
   identity: "M24 22a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM10 42c0-8 6-13 14-13s14 5 14 13",
   content: "M8 10h32v28H8zM8 20h32M16 28h16",
+  boards: "M7 10h34v12H7zM7 27h16v12H7zM28 27h13v12H28z",
   colophon: "M8 18h32M8 26h24M8 34h28",
   brand: "M24 8a16 16 0 1 0 0 32 16 16 0 0 0 0-32zM24 18a6 6 0 1 0 0 12 6 6 0 0 0 0-12z",
   container: "M6 10h36v28H6zM18 10v28M30 10v28",

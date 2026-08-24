@@ -3,6 +3,8 @@
     "menu": "User menu",
     "profile": "Profile",
     "customize": "Customize",
+    "boards": "Boards",
+    "admin": "Admin",
     "settings": "Settings",
     "signOut": "Sign out",
     "signIn": "Sign in",
@@ -22,13 +24,12 @@
     "emptyTitle": "Nothing here yet",
     "emptyHint": "Drag a widget from the gallery above."
   },
+  "boardsPreview": {
+    "empty": "No body content to preview"
+  },
   "gallery": {
     "title": "Widgets Gallery",
     "add": "Add to page",
-    "sample": {
-      "link": "Notes",
-      "track": "Field recording"
-    },
     "search": "Search widgets",
     "noMatch": "No widget matches that.",
     "drag": "Drag onto the page",
@@ -38,7 +39,9 @@
     "confirmAdd": "add"
   },
   "flows": {
-    "grid": "grid"
+    "row": "Row",
+    "column": "Column",
+    "grid": "Wrap"
   },
   "widgets": {
     "container": {
@@ -96,13 +99,32 @@
     "content": {
       "label": "Page content",
       "description": "Whatever the current page shows — the feed, a profile, settings."
+    },
+    "boards": {
+      "label": "Board feed",
+      "description": "Published boards from Home or Explore, with real layout previews."
     }
+  },
+  "boardsWidget": {
+    "feed": "Source",
+    "feeds": {
+      "home": "Home",
+      "explore": "Explore"
+    },
+    "sort": "Order",
+    "sorts": {
+      "trending": "Trending",
+      "recent": "Recent",
+      "random": "Random"
+    },
+    "limit": "Boards shown",
+    "heading": "Heading",
+    "showHeading": "Show heading and introduction",
+    "showControls": "Let visitors change the order"
   },
   "text": {
     "heading": "Heading",
-    "body": "Text",
-    "sampleHeading": "A heading",
-    "sampleBody": "Words of your own, anywhere on your page."
+    "body": "Text"
   },
   "link": {
     "label": "Label",
@@ -175,7 +197,18 @@
       "block": "Up and down",
       "both": "Both"
     },
+    "scrollBehavior": "Scrollbars stay hidden by default. They appear only while overflowing content is being scrolled.",
     "scrollNote": "CSS cannot scroll one axis while the other stays visible, so anything reaching outside this container — a corner badge, a menu — will be clipped on both.",
+    "inheritance": "Inheritance",
+    "inheritances": {
+      "inherit": "Inherit from container",
+      "site": "All website pages",
+      "page": "This page only"
+    },
+    "inheritanceInheritedSite": "Inherited as site-wide. Changes follow this widget across Home, Explore, and About.",
+    "inheritanceInheritedPage": "Inherited as page-only. Changes stay on this page.",
+    "inheritanceSiteNote": "Changes to this widget and its inherited children apply to every website page.",
+    "inheritancePageNote": "This is a local override. Later site-wide edits leave it unchanged.",
     "font": "Font",
     "fontSample": "The quick brown fox jumps over the lazy dog",
     "custom": "Custom colour",
@@ -268,17 +301,12 @@
     "media": "Media",
     "about": "About",
     "settings": "Settings",
-    "customize": "Customize"
-  },
-  "overflow": {
-    "title": "This board is wider than it can show",
-    "inline": "Some widgets reach past the right edge and are cut off.",
-    "block": "Some widgets reach past the bottom edge and are cut off.",
-    "both": "Some widgets reach past the right and bottom edges and are cut off.",
-    "fix": "Make the widgets smaller, switch the container to Wrap or Column, or turn scrolling on in its settings.",
-    "scrollable": "Scrolling is on, so the rest can be reached — but anything reaching outside a scrolling container is clipped on both axes."
+    "customize": "Customize",
+    "boards": "Boards",
+    "admin": "Admin"
   },
   "layout": {
+    "flow": "Direction",
     "columns": "Width (columns)",
     "span": "Width (columns)",
     "rows": "Height (rows)",
@@ -302,14 +330,15 @@
     "stay": "keep editing"
   },
   "siteDefaults": {
-    "title": "Starting layout for new accounts",
-    "none": "New accounts start from the layout the app ships.",
-    "published": "New accounts start from a layout published on {{when}}.",
-    "publish": "Publish this page",
-    "publishTitle": "Publish this page as the starting layout?",
-    "publishMessage": "Every account created from now on starts from this page. Existing profiles are untouched.",
+    "title": "Standalone board",
+    "none": "The homepage and new boards use the layout the app ships.",
+    "published": "The homepage and new boards use the layout published on {{when}}.",
+    "publish": "Publish as standalone",
+    "export": "Export JSON",
+    "publishTitle": "Publish this as the standalone board?",
+    "publishMessage": "The app homepage and boards created from now on use this layout. Existing boards are untouched.",
     "clear": "Clear",
     "clearTitle": "Clear the published layout?",
-    "clearMessage": "New accounts go back to starting from the layout the app ships. Existing profiles are untouched."
+    "clearMessage": "The homepage and new boards go back to the layout the app ships. Existing boards are untouched."
   }
 }

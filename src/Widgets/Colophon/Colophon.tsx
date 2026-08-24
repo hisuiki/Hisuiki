@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import ExternalLink from "../../Common/Components/ExternalLink/ExternalLink";
-import { Link } from "../../Services/router";
+import { AppLink } from "../../Services/AppRouter";
 
 interface VersionInfo {
   version: string;
@@ -38,9 +38,9 @@ export default function Colophon() {
   return (
     <div className="projAbout">
       <p>{t("footer.rights", { year: new Date().getUTCFullYear() })}</p>
-      <Link href="/about" className="footer-about-link">
+      <AppLink href="/about" className="footer-about-link">
         {t("footer.about")}
-      </Link>
+      </AppLink>
       <ExternalLink
         href="https://github.com/powerm1nt/Hisuiki"
         label="Hisuiki on GitHub"

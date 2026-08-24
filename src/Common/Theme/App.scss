@@ -1,0 +1,2268 @@
+/* NukaWorks — global styles */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Self-hosted Segoe UI. Only the six real static weights it ships, so the browser
+   matches a real face instead of synthesising 200/500. */
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Light 300.ttf") format("truetype"); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Light Italic 300.ttf") format("truetype"); font-weight: 300; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Semilight 350.ttf") format("truetype"); font-weight: 350; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Semilight Italic 350.ttf") format("truetype"); font-weight: 350; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI 400.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Italique 400.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Semibold 600.ttf") format("truetype"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Semibold Italic 600.ttf") format("truetype"); font-weight: 600; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Gras 700.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Gras Italique 700.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Black 900.ttf") format("truetype"); font-weight: 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Segoe UI"; src: url("/fonts/Segoe UI Black Italic 900.ttf") format("truetype"); font-weight: 900; font-style: italic; font-display: swap; }
+
+/* ── Color system ────────────────────────────────────────────────────────
+   Pre-JS fallback only: palette.ts resamples all of these from the wallpaper at
+   runtime and enforces the WCAG minimums. */
+:root {
+  --wallpaper-url: url("/assets/default2.png");
+
+  --color-accent: #5468e0;
+  --color-accent-strong: #7688ea;
+  --color-accent-soft: rgba(84, 104, 224, 0.16);
+  --color-accent-muted: #3a48a8;
+
+  --color-text: #ffffff;
+  --color-text-secondary: #c9cdf0;
+  --color-text-muted: #9aa0d4;
+  --color-text-faint: #6f76ab;
+  --color-surface: #1b1b1b;
+  --color-surface-veil: rgba(16, 12, 48, 0.55);
+  --color-outline: #7688ea;
+  --color-separator: rgba(201, 205, 240, 0.32);
+
+  --color-tip: #4fb389;
+  --color-tip-bg: rgba(79, 179, 137, 0.14);
+  --color-warning: #d9a35c;
+  --color-warning-bg: rgba(217, 163, 92, 0.14);
+  --color-danger: #d9636e;
+  --color-danger-bg: rgba(217, 99, 110, 0.14);
+}
+/* The bundled fallback photo; today's is an <img> in .wallpaper-layer below.
+   background-blend-mode rather than filter, which would wash out page content too.
+   No scrim here — .wallpaper-scrim covers whichever photo is showing, and applying it
+   in both places multiplies out to black on a bright wallpaper. */
+html {
+  padding: 0; margin: 0;
+  background-color: #322c58;
+  background-image: var(--wallpaper-url);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
+  background-blend-mode: screen;
+}
+/* No background on body: an in-flow block's background paints over the canvas and
+   buries the wallpaper. */
+body { padding: 0; margin: 0; background-color: transparent; }
+@media screen and (max-width: 768px) {
+  /* iOS Safari mishandles background-attachment:fixed (jank/repaint bugs) */
+  html { background-attachment: scroll; }
+}
+/* ── Wallpaper ──────────────────────────────────────────────────────────
+   An <img> (Wallpaper.tsx), not a background-image: background-image cannot be
+   transitioned, so the photo would paint in as its bytes arrive. */
+.wallpaper-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.wallpaper-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* Matches the fallback's cover/center so the fade doesn't shift the composition. */
+  object-fit: cover;
+  object-position: center;
+  opacity: 0;
+  transition: opacity 0.6s ease-in-out;
+}
+.wallpaper-image.is-visible { opacity: 1; }
+/* Auto-darken scrim over whichever photo is showing; alpha set inline by Wallpaper.tsx. */
+.wallpaper-scrim {
+  position: absolute;
+  inset: 0;
+  transition: background-color 0.6s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wallpaper-image, .wallpaper-scrim { transition: none; }
+}
+/* Without this the positioned wallpaper paints over the in-flow content. */
+.main-content, .main-footer { position: relative; z-index: 1; }
+/* Scrollbars do not paint permanent strips over the page. A captured scroll event adds the active
+   class only to the surface that really moved; the thumb disappears again shortly after it stops. */
+* { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb { background: transparent; border-radius: 0; }
+.is-actively-scrolling { scrollbar-color: var(--color-accent-strong) transparent; }
+.is-actively-scrolling::-webkit-scrollbar-thumb { background: var(--color-accent-strong); }
+::selection { background: var(--color-accent); color: #ffffff !important; }
+/* Inherited safety net for text sitting directly on the wallpaper, and for the footer's
+   translucent veil. Opted out below where it reads as a smudge. */
+#app { font-size: clamp(12px, 3vw, 16px); color: #ffffff; display: flex; min-height: 100vh; flex-direction: column; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; font-weight: 300; background-color: transparent; width: 100%; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+h1 { letter-spacing: 2px; font-weight: 900; }
+a { color: inherit; transition: color 0.15s ease-in-out; text-decoration: underline dotted; }
+a:hover { text-decoration: underline; color: var(--color-accent-strong); }
+
+/* White, not the accent: the wallpaper and chrome are already in that blue family. */
+:focus-visible {
+  outline: 2px dotted var(--color-text);
+  outline-offset: 3px;
+  border-radius: 0;
+}
+/* ── Pivot type ───────────────────────────────────────────────────────
+   The Metro pivot face, still worn by the navigation and link widgets. What used to be around it —
+   the strip, its scrolling, its add control and its per-item chrome — went with the header
+   component: the bar is a container of widgets now, and it gets its layout from the container's
+   flow rather than from a rule that knew it was a header. */
+/* --row-fit is set by useFitRow on a non-scrolling row that would otherwise run off the page. It is
+   applied to sizes rather than as a transform on the row: a transform there would create a stacking
+   context and a backdrop root, which is what has repeatedly broken the frosting elsewhere. */
+.pivot-item {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  text-decoration: none;
+  text-transform: lowercase;
+  color: var(--color-text-faint);
+  font-weight: 200;
+  font-size: calc(clamp(2.6rem, 13vw, 3.6rem) * var(--row-fit, 1));
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  transition: color 0.15s ease-in-out;
+}
+.pivot-item:hover { color: var(--color-text-secondary); text-decoration: none; }
+.pivot-item.is-active { color: #ffffff; }
+
+/* The field a link widget is renamed in: invisible on purpose, so what is typed already looks like
+   the item it will become and the caret is the only thing announcing it is editable. */
+.pivot-name-input {
+  background: none;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font: inherit;
+  padding: 0;
+  min-width: 1ch;
+  caret-color: var(--color-accent-strong);
+}
+
+/* Account tile — flat and square, brightens on hover/focus. */
+.metro-avatar-tile {
+  flex: 0 0 auto;
+  width: calc(3.4rem * var(--row-fit, 1));
+  height: calc(3.4rem * var(--row-fit, 1));
+  display: block;
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  outline: 1px solid transparent;
+  outline-offset: 3px;
+  transition: opacity 0.15s ease-in-out, outline-color 0.15s ease-in-out;
+}
+.metro-avatar-tile:hover { opacity: 0.85; outline-color: rgba(255,255,255,0.5); }
+.metro-avatar-tile:focus-visible { opacity: 0.85; outline: 2px dotted var(--color-text); outline-offset: 3px; }
+.metro-avatar-container { position: relative; }
+
+/* Content enters from the right, per Windows Phone's Continuum transition. */
+@keyframes metro-enter { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes metro-board-enter {
+  from { opacity: 0; transform: translate3d(44px, 0, 0) scale(0.96); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes metro-board-leave {
+  from { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  to { opacity: 0; transform: translate3d(-34px, 0, 0) scale(0.94); }
+}
+.board-surface.is-entering > .widget-board > .widget {
+  animation: metro-board-enter 0.42s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(min(var(--board-order, 0), 8) * 32ms);
+}
+.board-surface.is-entering > .widget-board > .widget:nth-child(2) { --board-order: 1; }
+.board-surface.is-entering > .widget-board > .widget:nth-child(3) { --board-order: 2; }
+.board-surface.is-entering > .widget-board > .widget:nth-child(4) { --board-order: 3; }
+.board-surface.is-entering > .widget-board > .widget:nth-child(5) { --board-order: 4; }
+.board-surface.is-entering > .widget-board > .widget:nth-child(n + 6) { --board-order: 5; }
+.board-surface.is-leaving { pointer-events: none; }
+.board-surface.is-leaving > .widget-board > .widget {
+  animation: metro-board-leave 0.17s ease-in forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .file-content,
+  .board-surface.is-entering > .widget-board > .widget,
+  .board-surface.is-leaving > .widget-board > .widget { animation: none; }
+}
+
+@media screen and (max-width: 768px) {
+  .page-rail { width: 95%; }
+  /* The bar is a single line that never clips, so on a narrow screen the labels have to give way
+     rather than the strip. */
+  .pivot-item { font-size: clamp(1.5rem, 8vw, 2.2rem); }
+  .metro-avatar-tile { width: 2.4rem; height: 2.4rem; }
+}
+
+/* ── AppModal — confirm-before-leaving dialog for external links ───────── */
+@keyframes app-modal-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes app-modal-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes app-modal-rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes app-modal-rise-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(10px); } }
+.app-modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5em;
+  animation: app-modal-fade-in 0.15s ease-out;
+}
+.app-modal-overlay.is-closing { animation: app-modal-fade-out 0.18s ease-in forwards; }
+.app-modal {
+  width: 100%; max-width: 420px;
+  background: var(--color-surface);
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 1.8em 1.7em 1.4em;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  animation: app-modal-rise-in 0.18s ease-out;
+}
+.app-modal.is-closing { animation: app-modal-rise-out 0.18s ease-in forwards; }
+.app-modal-kicker { margin: 0 0 0.3em; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; font-weight: 600; color: var(--color-text-faint); }
+.app-modal-title { margin: 0 0 0.6em; text-transform: lowercase; font-size: 1.9rem; font-weight: 200; line-height: 1.1; color: #ffffff; }
+.app-modal-message { white-space: pre-line; margin: 0 0 0.4em; font-size: 0.95rem; font-weight: 300; line-height: 1.5; color: var(--color-text-secondary); }
+.app-modal-url { margin: 0 0 1.6em; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.8rem; color: var(--color-text-muted); word-break: break-all; }
+.app-modal-actions { display: flex; justify-content: flex-end; gap: 1.6em; }
+.app-modal-btn {
+  background: none; border: none; cursor: pointer; padding: 0.3em 0.1em;
+  font-family: inherit; font-size: 1rem; font-weight: 600; text-transform: lowercase; letter-spacing: 0.01em;
+  color: var(--color-text-muted);
+}
+.app-modal-btn:hover { color: #ffffff; }
+.app-modal-btn-confirm { color: #ffffff; }
+.app-modal-btn-danger { color: var(--color-danger); }
+.app-modal-btn-danger:hover { color: var(--color-danger); text-decoration: underline; }
+/* :focus, not :focus-visible — the dialog autofocuses cancel however it was opened, so
+   the ring should always show. */
+.app-modal-btn:focus {
+  outline: 2px dotted var(--color-text);
+  outline-offset: 3px;
+}
+.main-content { display: flex; justify-content: center; width: 100%; flex: 1; }
+.main-content-container { width: 100%; min-height: 100vh; background: transparent; display: flex; justify-content: center; padding: 0 0 2.5em; }
+@media screen and (max-width: 600px) { .main-content-container { padding: 0 0 1em; } }
+
+/* ── FileViewer — flat reading pane, no card chrome ─────────────────── */
+.file-content {
+  position: relative;
+  width: clamp(280px, 85%, 1200px);
+  min-height: 700px;
+  padding: 0 0 3em;
+  background: transparent;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* `backwards`, not `both`. `both` keeps the end frame applied after the animation, and the end
+     frame contains transform: translateX(0) — a transform, even an identity one, makes the element
+     a backdrop root, so every backdrop-filter inside it samples only itself and the blur silently
+     vanishes once the animation settles. The end frame is identical to the natural state, so
+     dropping `forwards` costs nothing. */
+  animation: metro-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  /* Skeleton pass only: on the replay this delay holds the pane hidden after the
+     skeleton has gone and reads as a flicker. */
+  animation-delay: 0.08s;
+}
+.file-content[data-phase="ready"], .file-content[data-phase="error"] { animation-delay: 0s; }
+@media screen and (max-width: 768px) { .file-content { width: 95%; min-height: auto; } }
+.file-content img { max-width: 100%; height: auto; border-radius: 0; margin: 1em 0; }
+.article-header-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1em; margin-bottom: 1.6em; }
+.article-meta-info { display: flex; align-items: center; gap: 1.2em; flex-wrap: wrap; }
+.article-meta-author { color: var(--color-text-secondary); font-size: 0.9rem; font-weight: 300; }
+.article-last-edited-badge { font-size: 0.85rem; color: var(--color-text-secondary); display: inline-flex; align-items: center; gap: 0.4em; }
+.article-last-edited-badge svg { opacity: 0.8; }
+.github-edit-btn { display: inline-flex; align-items: center; gap: 0.5em; padding: 0.3em 0.2em; font-size: 0.9rem; font-weight: 600; text-transform: lowercase; letter-spacing: 0.01em; color: var(--color-text-muted); background: none; border: none; text-decoration: none; transition: color 0.15s; }
+.github-edit-btn:hover { color: #ffffff; }
+.article-header-description { font-size: 1.1rem; font-weight: 300; line-height: 1.6; color: var(--color-text-secondary); margin-top: 0; margin-bottom: 1.6em; }
+.article-footer-nav { margin-top: 3.5em; padding-top: 0; width: 100%; }
+.article-nav-row { display: flex; align-items: center; justify-content: space-between; gap: 1em; flex-wrap: wrap; width: 100%; }
+.nav-cell { display: flex; align-items: center; gap: 0.8em; }
+.nav-cell-prev { justify-content: flex-start; flex: 1; min-width: 160px; }
+.nav-cell-next { justify-content: flex-end; flex: 1; min-width: 160px; text-align: right; }
+.nav-cell-middle { justify-content: center; flex-shrink: 0; color: var(--color-text-faint); font-size: 0.9rem; }
+.nav-cell-middle .breadcrumb-link { color: var(--color-text-secondary); font-weight: 300; text-decoration: none; text-transform: lowercase; transition: color 0.15s; }
+.nav-cell-middle .breadcrumb-link:hover { color: #ffffff; }
+.nav-cell-middle .nav-separator { color: rgba(255,255,255,0.2); }
+.nav-link { color: var(--color-text-secondary); font-weight: 300; font-size: 1rem; text-decoration: none; text-transform: lowercase; transition: color 0.15s; }
+.nav-link:hover { color: #ffffff; }
+.loading-text { color: var(--color-text-muted); font-weight: 300; }
+/* Translucent accent-tinted panel. The tint follows the wallpaper hue through
+   --color-surface-veil; the value there is the static fallback for when sampling fails. */
+.main-footer {
+  background-color: var(--color-surface-veil);
+  /* Saturation, not just blur: the backdrop is already darkened by .wallpaper-scrim and
+     the veil, and hue survives that where luminance doesn't. No brightness() — it lifts the
+     backdrop without lifting the text.
+
+     Do not hand-write the -webkit- twin. Lightning CSS prefixes this itself, and if the
+     prefixed form is already present it drops the standard property from the bundle. */
+  backdrop-filter: blur(28px) saturate(180%);
+  width: 100%;
+  /* A white hairline: the accent tint was invisible against the scrimmed photo. */
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+.footer-container { width: clamp(280px, 85%, 1200px); margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1em; padding: 1.2em 0; }
+@media screen and (max-width: 768px) { .footer-container { width: 95%; } }
+.footer-left { flex: 1 1 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1em; min-width: 0; }
+.sunproj-logo { display: flex; align-items: center; gap: 0.5em; text-decoration: none; color: inherit; }
+.sunproj-logo p { margin: 0; font-size: 1.05rem; letter-spacing: 0.01em; }
+.sunproj-logo .logo-bold  { font-weight: 900; }
+.sunproj-logo .logo-light { font-weight: 300; }
+.projAbout { display: flex; flex-direction: column; gap: 0.3em; text-align: right; }
+.projAbout p { margin: 0; font-size: 0.85rem; color: var(--color-text-muted); }
+.buildinfo { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.8rem; color: var(--color-text-faint); text-decoration: none; }
+.buildinfo:hover { color: #ffffff; }
+.buildinfo span { margin: 0 0.15em; }
+.posts-index-container { margin: 1.5em 0; }
+.posts-index-container h2 { font-size: 1.3rem; color: #ffffff; margin: 0; }
+.posts-index-header { display: flex; align-items: center; justify-content: space-between; gap: 1em; flex-wrap: wrap; margin-bottom: 1em; border-bottom: 1px solid #ffffff; padding-bottom: 0.4em; }
+.posts-index-header .editor-btn { font-size: 0.8rem; padding: 0.4em 0.9em; white-space: nowrap; }
+.posts-index-list { display: flex; flex-direction: column; gap: 1em; }
+.posts-index-card { background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.12); border-radius: 0; padding: 0.8em 0; }
+.posts-card-title { margin: 0 0 0.3em 0; font-size: 1.15rem; }
+.posts-card-title a { color: #ffffff; text-decoration: underline dotted; }
+.posts-card-title a:hover { text-decoration: underline; }
+.posts-card-desc { color: var(--color-text-secondary); font-size: 0.95rem; line-height: 1.5; margin: 0 0 0.6em 0; }
+.posts-card-meta { display: flex; align-items: center; gap: 1em; flex-wrap: wrap; font-size: 0.85rem; color: var(--color-text-muted); }
+.posts-card-author { font-weight: 500; color: var(--color-text-secondary); }
+.posts-card-last-edited { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; color: var(--color-text-secondary); display: inline-flex; align-items: center; gap: 0.4em; }
+/* Info/warning/tip/danger banners — a thin colored edge and a soft tint, no box. */
+.cmpns-info-bubble {
+  display: flex; align-items: flex-start; gap: 1em;
+  padding: 0.9em 1.1em;
+  border: none;
+  border-left: 3px solid var(--color-accent);
+  border-radius: 0;
+  background-color: var(--color-accent-soft);
+  color: var(--color-text);
+  font-size: 0.95rem;
+  font-weight: 300;
+  line-height: 1.5;
+  width: 100%;
+}
+.cmpns-info-bubble.is-type-error, .cmpns-info-bubble.is-type-error .info-title, .cmpns-info-bubble.is-type-error .info-content { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important; }
+.cmpns-info-bubble .info-icon-wrapper { color: var(--color-accent); }
+.md-component-warning { border-left-color: var(--color-warning); background-color: var(--color-warning-bg); }
+.md-component-warning .info-icon-wrapper { color: var(--color-warning); }
+.md-component-tip { border-left-color: var(--color-tip); background-color: var(--color-tip-bg); }
+.md-component-tip .info-icon-wrapper { color: var(--color-tip); }
+.md-component-danger { border-left-color: var(--color-danger); background-color: var(--color-danger-bg); }
+.md-component-danger .info-icon-wrapper { color: var(--color-danger); }
+.info-icon-wrapper { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 24px; height: 24px; margin-top: 0.1em; }
+.info-body { display: flex; flex-direction: column; gap: 0.2em; flex: 1; }
+.info-title { font-weight: 600; color: var(--color-text); font-size: 0.95rem; }
+.info-content { font-weight: 300; color: var(--color-text-secondary); }
+.info-content p { margin: 0; }
+/* ── Buttons — flat fill, sharp corners, accent tint on hover ───────── */
+.cmpns-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0.5em 1.2em;
+  border: 2px solid var(--color-text-muted);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.cmpns-button:hover { background: var(--color-accent-soft); border-color: var(--color-accent); }
+.file-content code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; background: rgba(255,255,255,0.08); border: none; padding: 0.15em 0.4em; border-radius: 0; font-size: 0.9em; }
+.file-content pre { background: rgba(255,255,255,0.05); border: none; border-radius: 0; padding: 1em 1.2em; overflow-x: auto; margin: 1em 0; }
+.file-content pre code { background: transparent; border: none; padding: 0; font-size: 0.88em; }
+.file-content blockquote { border: none; margin: 1em 0; padding: 0.3em 1.2em; background: rgba(255,255,255,0.04); color: var(--color-text-secondary); font-weight: 300; }
+.file-content table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+.file-content th, .file-content td { border: none; border-bottom: 1px solid rgba(255,255,255,0.12); padding: 0.5em 0.8em; text-align: left; }
+.file-content th { background: transparent; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.3); }
+.file-content hr { border: none; border-top: 1px solid rgba(255,255,255,0.15); margin: 2em 0; }
+
+/* ── Skeleton / shimmer ──────────────────────────────────────────────── */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+.skeleton {
+  display: block;
+  border-radius: 0;
+  background-color: rgba(255,255,255,0.06);
+  background-image: linear-gradient(90deg, rgba(255,255,255,0) 0px, rgba(255,255,255,0.12) 200px, rgba(255,255,255,0) 400px);
+  background-size: 600px 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-line  { height: 0.85em; margin: 0.55em 0; }
+.skeleton-title { height: 1.4em;  margin: 0 0 0.8em; }
+.skeleton-meta  { height: 1em;    width: 40%; }
+.skeleton-card  { height: 5.5em;  margin-bottom: 1em; border-left: 4px solid rgba(255,255,255,0.12); padding: 0; }
+
+/* ── SmartImage ──────────────────────────────────────────────────────── */
+.smart-img-wrap { position: relative; display: inline-block; }
+.smart-img-wrap.is-block { display: block; width: 100%; }
+.smart-img-skeleton { display: block; }
+.smart-img-error {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.4em; border: none; border-left: 3px solid var(--color-danger);
+  background: var(--color-danger-bg); color: var(--color-danger); font-size: 0.8rem; padding: 0.6em 1em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.smart-img-error svg { opacity: 0.7; }
+/* Markdown images with broken src — injected onerror swaps to .img-error class */
+.file-content img.img-error {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 120px; min-height: 60px;
+  background: var(--color-danger-bg); border-left: 3px solid var(--color-danger);
+  content: "⚠ image unavailable";
+}
+
+/* Pre-boot skeleton — mirrors the real app chrome */
+.sk-shell { display: flex; flex-direction: column; min-height: 100vh; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background-color: #121212; }
+.sk-header { background: transparent; }
+.sk-header-inner { width: clamp(280px, 85%, 1200px); margin: 0 auto; display: flex; align-items: center; gap: 1.5em; padding: 2em 0 0.6em; }
+.sk-pivot { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.2em 2.4em; }
+.sk-nav-item { height: 2.6rem; border-radius: 0; }
+.sk-avatar-tile { flex: 0 0 auto; width: 3.4rem; height: 3.4rem; border-radius: 0; }
+.sk-body { display: flex; justify-content: center; flex: 1; padding: 0 0 2.5em; }
+.sk-content { width: clamp(280px,85%,1200px); padding: 0 0 3em; background: transparent; }
+.sk-meta-row { display: flex; gap: 1em; margin-bottom: 1.5em; }
+.sk-footer { background: #2b2b2b; border-top: 1px solid rgba(255,255,255,0.12); padding: 1.2em 0; }
+.sk-footer-inner { width: clamp(280px,85%,1200px); margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 1em; }
+.sk-footer-left { flex: 1 1 auto; display: flex; justify-content: space-between; align-items: center; gap: 1em; min-width: 0; }
+.sk-footer-logo { width: 100px; height: 1.2em; }
+.sk-footer-copy  { width: 220px; height: 1em; }
+@media screen and (max-width: 768px) {
+  .sk-header-inner, .sk-content, .sk-footer-inner { width: 95%; }
+  .sk-avatar-tile { display: none; }
+}
+
+/* Page editor ("propose changes") */
+.editor-toggle-row { display: flex; align-items: center; gap: 1.2em; flex-wrap: wrap; }
+.editor-signed-in { font-size: 0.85rem; font-weight: 300; color: var(--color-text-muted); }
+.editor-signed-in button { background: none; border: none; color: inherit; text-decoration: none; cursor: pointer; font-family: inherit; font-weight: 600; padding: 0; margin-left: 0.4em; transition: color 0.15s; }
+.editor-signed-in button:hover { color: #ffffff; }
+.page-editor { margin-bottom: 1.5em; }
+.editor-status { color: var(--color-text-muted); font-size: 0.9rem; }
+.editor-tabs { display: flex; gap: 0.5em; margin-bottom: 0.8em; }
+.editor-tab { background: transparent; border: 2px solid var(--color-text-muted); border-radius: 0; color: var(--color-text-secondary); padding: 0.4em 1.1em; font-size: 0.85rem; cursor: pointer; font-family: inherit; transition: background 0.15s, border-color 0.15s, color 0.15s; }
+.editor-tab:hover { background: var(--color-accent-soft); border-color: var(--color-accent); color: var(--color-text); }
+.editor-tab.is-active { background: var(--color-accent); border-color: var(--color-accent); color: #ffffff; font-weight: 700; }
+.editor-pane { border: 2px solid var(--color-text-muted); margin-bottom: 1em; }
+.editor-toolbar { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.3em; padding: 0.5em; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.25); }
+.toolbar-btn { background: transparent; border: 1px solid var(--color-text-faint); border-radius: 0; color: var(--color-text-secondary); font-family: inherit; font-size: 0.8rem; padding: 0.3em 0.7em; cursor: pointer; line-height: 1.3; transition: background 0.15s, border-color 0.15s, color 0.15s; }
+.toolbar-btn:hover { background: var(--color-accent-soft); border-color: var(--color-accent); color: #ffffff; }
+.toolbar-btn-bold { font-weight: 700; }
+.toolbar-btn-italic { font-style: italic; }
+.toolbar-btn-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.toolbar-sep { width: 1px; background: rgba(255,255,255,0.2); margin: 0 0.2em; }
+.editor-preview { padding: 1.5em; background: #0a0a0a; max-height: 480px; overflow-y: auto; }
+.page-editor-monaco { height: 420px; }
+.editor-fields { display: flex; flex-direction: column; gap: 0.6em; margin-bottom: 1em; }
+.editor-commit-input, .editor-description-input { background: #000000; border: 2px solid var(--color-text-muted); border-radius: 0; color: #ffffff; font-family: inherit; font-size: 0.9rem; padding: 0.6em 0.8em; resize: vertical; transition: border-color 0.15s; }
+.editor-commit-input:focus, .editor-description-input:focus { border-color: var(--color-accent); }
+.editor-commit-input::placeholder, .editor-description-input::placeholder { color: var(--color-text-faint); }
+.editor-actions { display: flex; justify-content: flex-end; gap: 0.6em; }
+.editor-btn { font-family: inherit; font-size: 0.85rem; font-weight: 500; padding: 0.5em 1.2em; border: 2px solid var(--color-text-muted); border-radius: 0; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.editor-btn-cancel { background: transparent; color: var(--color-text); }
+.editor-btn-cancel:hover { background: var(--color-accent-soft); border-color: var(--color-accent); }
+.editor-btn-primary { background: var(--color-accent); border-color: var(--color-accent); color: #ffffff; }
+.editor-btn-primary:hover { background: var(--color-accent-strong); border-color: var(--color-accent-strong); }
+.editor-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.editor-success { border: none; border-left: 3px solid var(--color-tip); background-color: var(--color-tip-bg); padding: 1.2em 1.5em; display: flex; align-items: center; justify-content: space-between; gap: 1em; flex-wrap: wrap; }
+.editor-skeleton-tabs { display: flex; gap: 0.5em; margin-bottom: 0.8em; }
+.skeleton-tab { height: 2em; }
+.skeleton-editor-block { height: 420px; margin-bottom: 1em; }
+.editor-skeleton-fields { display: flex; flex-direction: column; gap: 0.6em; margin-bottom: 1em; }
+.skeleton-field { height: 2.4em; }
+.skeleton-field-lg { height: 4.5em; }
+.editor-skeleton-actions { display: flex; justify-content: flex-end; gap: 0.6em; }
+.skeleton-action { height: 2.4em; }
+.editor-slug-field { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6em; margin-bottom: 1em; }
+.editor-slug-field label { font-size: 0.85rem; color: var(--color-text-secondary); }
+.editor-slug-input { flex: 1 1 220px; margin: 0; background: #000000; border: 2px solid var(--color-text-muted); border-radius: 0; color: #ffffff; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.9rem; padding: 0.5em 0.7em; transition: border-color 0.15s; }
+.editor-slug-input:focus { border-color: var(--color-accent); }
+.editor-slug-input::placeholder { color: var(--color-text-faint); }
+.editor-slug-preview { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; color: var(--color-text-muted); }
+.editor-slug-error { flex-basis: 100%; font-size: 0.8rem; color: var(--color-danger); }
+
+/* Page history */
+.page-history { margin-bottom: 1.5em; }
+.history-header { display: flex; align-items: center; justify-content: space-between; gap: 1em; margin-bottom: 1em; }
+.history-header h3 { margin: 0; font-size: 1.1rem; color: #ffffff; }
+.history-skeleton { display: flex; flex-direction: column; gap: 0.8em; }
+.history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6em; }
+.history-item { border: 1px solid rgba(255,255,255,0.12); }
+.history-entry { width: 100%; display: flex; align-items: center; gap: 0.7em; background: rgba(255,255,255,0.03); border: none; padding: 0.7em 0.9em; cursor: pointer; text-align: left; font-family: inherit; color: inherit; }
+.history-entry:hover { background: rgba(255,255,255,0.08); }
+.history-entry.is-active { background: rgba(255,255,255,0.1); }
+.history-avatar { width: 28px; height: 28px; border-radius: 100%; object-fit: cover; border: 1px solid #ffffff; flex-shrink: 0; }
+.history-entry-body { display: flex; flex-direction: column; gap: 0.15em; min-width: 0; }
+.history-message { font-size: 0.92rem; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-meta { font-size: 0.78rem; color: var(--color-text-muted); }
+.history-detail { padding: 1em; border-top: 1px solid rgba(255,255,255,0.12); }
+.history-view-commit { margin-left: auto; font-size: 0.8rem; color: var(--color-text-muted); text-decoration: none; align-self: center; }
+.history-view-commit:hover { color: #ffffff; }
+.history-diff-hunk { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; background: #000000; border: 1px solid rgba(255,255,255,0.12); margin-bottom: 1em; overflow-x: auto; }
+.history-diff-line { padding: 0.15em 0.8em; white-space: pre-wrap; word-break: break-word; }
+.history-diff-header { color: var(--color-text-muted); background: rgba(255,255,255,0.05); }
+.history-diff-added { color: var(--color-tip); background: var(--color-tip-bg); }
+.history-diff-removed { color: var(--color-danger); background: var(--color-danger-bg); }
+.history-diff-skeleton { display: flex; flex-direction: column; gap: 0.5em; padding: 0.8em; }
+.history-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2em; margin-bottom: 1.2em; }
+.history-compare-pane { border: 1px solid rgba(255,255,255,0.12); padding: 1em; min-width: 0; }
+.history-compare-pane h4 { margin: 0 0 0.6em; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); }
+@media screen and (max-width: 700px) {
+  .history-compare { grid-template-columns: 1fr; }
+}
+
+/* ── Photos — square grid, flat tiles, no card chrome ─────────────────── */
+.photo-gallery { margin: 1.5em 0; }
+.photo-gallery h2 { font-size: 1.3rem; color: #ffffff; margin: 0; }
+/* auto-fill rather than a fixed count: the grid thins to two columns on a phone by itself. */
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px; }
+.photo-tile { position: relative; display: block; aspect-ratio: 1; overflow: hidden; background: rgba(255,255,255,0.05); text-decoration: none; }
+.photo-tile-image { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+.photo-tile:hover .photo-tile-image, .photo-tile:focus-visible .photo-tile-image { transform: scale(1.04); }
+/* The counts sit on the photo itself, so they get a fixed dark veil rather than a palette token:
+   the tile underneath is an arbitrary photograph, not a themed surface. */
+.photo-tile-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 1.4em; background: rgba(0,0,0,0.45); color: #ffffff; font-weight: 600; font-size: 0.95rem; opacity: 0; transition: opacity 0.2s ease-in-out; }
+.photo-tile:hover .photo-tile-overlay, .photo-tile:focus-visible .photo-tile-overlay { opacity: 1; }
+.photo-tile-stat { display: inline-flex; align-items: center; gap: 0.4em; }
+.photo-tile-skeleton { aspect-ratio: 1; height: auto; }
+@media (prefers-reduced-motion: reduce) {
+  .photo-tile-image, .photo-tile-overlay { transition: none; }
+  .photo-tile:hover .photo-tile-image, .photo-tile:focus-visible .photo-tile-image { transform: none; }
+}
+
+/* Photo page */
+.photo-detail { margin: 1.5em 0; }
+.photo-detail-figure { margin: 0 0 1.2em; background: rgba(255,255,255,0.04); }
+.photo-detail-image { display: block; width: 100%; height: auto; max-height: 78vh; object-fit: contain; margin: 0; }
+.photo-detail-skeleton { aspect-ratio: 4 / 3; height: auto; margin-bottom: 1.2em; }
+.photo-detail-byline { display: flex; align-items: center; gap: 0.8em; margin-bottom: 1em; flex-wrap: wrap; }
+.photo-author-avatar { border-radius: 100%; object-fit: cover; border: 1px solid #ffffff; flex-shrink: 0; }
+.photo-byline-text { display: flex; flex-direction: column; gap: 0.1em; min-width: 0; }
+.photo-author-name { font-weight: 600; font-size: 0.95rem; color: var(--color-text); }
+.photo-posted-at { font-size: 0.8rem; color: var(--color-text-muted); }
+.photo-owner-actions { margin-left: auto; display: flex; align-items: center; gap: 1em; }
+.photo-delete-btn:hover { color: var(--color-danger); }
+.photo-caption { font-size: 1.05rem; font-weight: 300; line-height: 1.6; color: var(--color-text-secondary); margin: 0 0 0.8em; white-space: pre-wrap; }
+.photo-tags { display: flex; flex-wrap: wrap; gap: 0.6em; margin: 0 0 1.2em; }
+.photo-tag { font-size: 0.85rem; color: var(--color-accent-strong); }
+
+.photo-actions { display: flex; align-items: center; gap: 1.6em; padding: 0.8em 0; border-top: 1px solid rgba(255,255,255,0.12); border-bottom: 1px solid rgba(255,255,255,0.12); }
+.photo-like-btn { display: inline-flex; align-items: center; gap: 0.5em; background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; font-size: 0.9rem; font-weight: 600; text-transform: lowercase; color: var(--color-text-muted); transition: color 0.15s; }
+.photo-like-btn:hover { color: #ffffff; }
+.photo-like-btn.is-liked { color: var(--color-danger); }
+.photo-action-stat { display: inline-flex; align-items: center; gap: 0.5em; font-size: 0.9rem; color: var(--color-text-muted); }
+.photo-action-count { font-variant-numeric: tabular-nums; }
+
+/* Comments */
+.photo-comments { margin-top: 1.6em; }
+.photo-comments h3 { margin: 0 0 0.8em; font-size: 1.05rem; color: #ffffff; }
+.photo-comment-list { list-style: none; margin: 0 0 1.2em; padding: 0; display: flex; flex-direction: column; gap: 1em; }
+.photo-comment { display: flex; align-items: flex-start; gap: 0.7em; }
+.photo-comment-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.2em; }
+.photo-comment-head { display: flex; align-items: baseline; gap: 0.7em; flex-wrap: wrap; }
+.photo-comment-text { margin: 0; font-size: 0.95rem; font-weight: 300; line-height: 1.5; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.photo-comment-delete { background: none; border: none; cursor: pointer; font-family: inherit; font-size: 1.2rem; line-height: 1; padding: 0 0.2em; color: var(--color-text-faint); transition: color 0.15s; }
+.photo-comment-delete:hover { color: var(--color-danger); }
+.photo-comment-form { display: flex; gap: 0.6em; flex-wrap: wrap; }
+.photo-comment-form .editor-commit-input { flex: 1 1 240px; }
+
+/* Composer */
+.photo-composer { margin-bottom: 1.5em; }
+.photo-composer-heading { margin: 0 0 1em; font-size: 1.05rem; color: #ffffff; }
+.photo-dropzone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1em; padding: 2em 1em; margin-bottom: 1.2em; border: 2px dashed var(--color-text-muted); background: rgba(255,255,255,0.03); transition: border-color 0.15s, background 0.15s; }
+.photo-dropzone.is-dragging { border-color: var(--color-accent); background: var(--color-accent-soft); }
+.photo-dropzone.has-photo { padding: 1em; }
+.photo-dropzone-hint { margin: 0; color: var(--color-text-muted); font-size: 0.95rem; text-align: center; }
+.photo-composer-preview { max-width: 100%; max-height: 420px; object-fit: contain; display: block; }
+/* Hidden rather than absent: the visible button drives it, but it must stay a real input. */
+.photo-file-input { display: none; }
+.photo-field { display: flex; flex-direction: column; gap: 0.35em; }
+.photo-field > span { font-size: 0.85rem; color: var(--color-text-secondary); }
+.photo-field-hint { font-size: 0.78rem; color: var(--color-text-faint); }
+.photo-edit-form { display: flex; flex-direction: column; gap: 0.9em; margin-bottom: 1.2em; }
+@media screen and (max-width: 600px) {
+  .photo-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+}
+
+/* ── Sign in ─────────────────────────────────────────────────────────── */
+.signin-panel { max-width: 420px; margin: 2em 0; display: flex; flex-direction: column; gap: 1em; }
+.signin-panel h2 { margin: 0; font-size: 1.3rem; color: #ffffff; }
+.signin-providers { display: flex; flex-direction: column; gap: 0.6em; }
+.signin-provider { width: 100%; text-align: center; }
+/* A rule with the word centred in it, drawn from the text color so it follows the palette. */
+.signin-separator { display: flex; align-items: center; gap: 0.8em; margin: 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-faint); }
+.signin-separator::before, .signin-separator::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,0.15); }
+.signin-form { display: flex; flex-direction: column; gap: 0.9em; }
+.signin-toggle { align-self: flex-start; }
+.signin-signed-in { margin: 0; font-size: 0.95rem; font-weight: 300; color: var(--color-text-secondary); }
+/* The "home" action is a link styled as a button, so it needs the button's own box back. */
+.signin-panel a.editor-btn { display: inline-flex; align-items: center; text-decoration: none; color: var(--color-text); }
+
+/* Metro Dropdown Menu.
+   Portalled to <body> by <Anchored> and positioned in viewport coordinates, so it inherits nothing
+   from the app shell and must state its own type. It sets no `position` here for the same reason the
+   action popover does not: the inline `position: fixed` is what carries it clear of the header. */
+.metro-dropdown-menu {
+  z-index: 1200;
+  min-width: 180px;
+  max-width: 240px;
+  display: flex;
+  flex-direction: column;
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 8px 32px var(--color-surface-veil);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-weight: 300;
+  color: var(--color-text);
+  text-shadow: none;
+  text-transform: none;
+}
+.metro-dropdown-identity { padding: 10px 14px; border-bottom: 1px solid var(--color-accent-soft); }
+.metro-dropdown-name { font-weight: 600; color: var(--color-text); font-size: 1.05em; margin-bottom: 2px; }
+.metro-dropdown-email { color: var(--color-text-secondary); font-size: 0.82em; overflow-wrap: anywhere; }
+
+.metro-dropdown-item {
+  display: block;
+  padding: 8px 14px;
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: 0.95em;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  font-family: inherit;
+  transition: background-color 0.1s ease;
+}
+
+.metro-dropdown-item:hover,
+.metro-dropdown-item:focus {
+  background-color: var(--color-accent-soft);
+  outline: none;
+}
+
+.metro-dropdown-item:hover {
+  text-decoration: none;
+}
+
+/* ── Landing: tabs, composer, feed ───────────────────────────────────── */
+.landing-tabs { display: flex; gap: 0.4em; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 1.4em; }
+.landing-tab {
+  padding: 0.7em 1.2em; font-size: 0.95rem; font-weight: 600; text-transform: lowercase;
+  color: var(--color-text-muted); text-decoration: none; border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.landing-tab:hover { color: #ffffff; text-decoration: none; }
+.landing-tab.is-active { color: #ffffff; border-bottom-color: var(--color-accent); }
+.landing-lead { color: var(--color-text-secondary); font-weight: 300; margin-bottom: 1.4em; }
+.landing-about h1 { font-size: 1.6rem; margin-bottom: 0.6em; }
+.landing-about p { color: var(--color-text-secondary); font-weight: 300; line-height: 1.65; margin: 0 0 0.9em; }
+
+/* Composer — a textarea and three buttons, not a second editor. */
+.composer { display: flex; flex-direction: column; gap: 0.7em; padding: 1em 0 1.2em; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 1.4em; }
+.composer-signed-out { align-items: flex-start; }
+.composer-input {
+  width: 100%; background: transparent; border: none; resize: vertical;
+  color: var(--color-text); font-family: inherit; font-size: 1.05rem; line-height: 1.5; outline: none;
+}
+.composer-input::placeholder { color: var(--color-text-faint); }
+.composer-input:focus { outline: none; }
+.composer-actions { display: flex; align-items: center; justify-content: space-between; gap: 1em; }
+.composer-tools { display: flex; gap: 0.3em; }
+.composer-submit { display: flex; align-items: center; gap: 0.8em; }
+.composer-count { font-size: 0.8rem; color: var(--color-text-faint); font-variant-numeric: tabular-nums; }
+.composer-error { margin: 0; font-size: 0.85rem; color: var(--color-danger); }
+
+/* Feed */
+.feed { display: flex; flex-direction: column; }
+.feed-post { padding: 1.2em 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.feed-post-head { display: flex; align-items: center; gap: 0.6em; margin-bottom: 0.6em; flex-wrap: wrap; }
+.feed-avatar { border-radius: 100%; object-fit: cover; border: 1px solid rgba(255,255,255,0.25); flex-shrink: 0; }
+.feed-author { font-weight: 600; color: var(--color-text); }
+.feed-handle, .feed-time { font-size: 0.85rem; color: var(--color-text-muted); }
+/* Pushed right so the timestamp reads as metadata rather than part of the name. */
+.feed-time { margin-left: auto; }
+.feed-title { margin: 0 0 0.4em; font-size: 1.1rem; }
+.feed-body { color: var(--color-text-secondary); font-weight: 300; line-height: 1.6; overflow-wrap: anywhere; }
+.feed-body > :first-child { margin-top: 0; }
+.feed-body > :last-child { margin-bottom: 0; }
+.feed-post-foot { display: flex; gap: 1.6em; margin-top: 0.8em; font-size: 0.85rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+
+/* ── Profile ─────────────────────────────────────────────────────────── */
+.profile-head { margin-bottom: 1.6em; }
+.profile-identity { display: flex; align-items: flex-start; gap: 1.2em; margin-bottom: 1em; }
+.profile-avatar-fallback {
+  width: 96px; height: 96px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-accent-soft); border: 1px solid var(--color-accent);
+  font-size: 2.4rem; font-weight: 300; color: var(--color-text);
+}
+.profile-names { min-width: 0; }
+.profile-name { margin: 0; font-size: 1.7rem; letter-spacing: 0; font-weight: 600; }
+.profile-handle { margin: 0.1em 0 0; color: var(--color-text-muted); font-size: 0.95rem; }
+.profile-headline { margin: 0.5em 0 0; color: var(--color-text-secondary); font-weight: 300; }
+.profile-facts { display: flex; flex-wrap: wrap; gap: 0.5em 1.8em; margin: 0 0 0.8em; }
+.profile-fact { display: flex; align-items: baseline; gap: 0.5em; }
+.profile-fact dt { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-faint); }
+.profile-fact dd { margin: 0; font-size: 0.9rem; color: var(--color-text-secondary); }
+.profile-links { display: flex; flex-wrap: wrap; gap: 0.8em 1.4em; list-style: none; margin: 0; padding: 0; }
+.profile-links a { color: var(--color-accent-strong); font-size: 0.9rem; }
+.profile-bio { margin: 0 0 1.8em; padding: 1.2em 0; border-top: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--color-text-secondary); font-weight: 300; line-height: 1.65; }
+.profile-bio > :first-child { margin-top: 0; }
+.profile-bio > :last-child { margin-bottom: 0; }
+.profile-tabs { display: flex; gap: 0.4em; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 1.2em; }
+.profile-tabs .landing-tab { background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit; }
+.profile-avatar-skeleton { width: 96px; height: 96px; border-radius: 50%; margin-bottom: 1em; }
+
+/* Activity heatmap — a year of posts, GitHub's arrangement. */
+.heatmap { margin: 0 0 1.8em; }
+/* Scrolls on its own rather than widening the page: 53 columns does not fit a phone. */
+.heatmap-grid { display: flex; gap: 3px; overflow-x: auto; padding-bottom: 0.4em; }
+.heatmap-week { display: flex; flex-direction: column; gap: 3px; }
+.heatmap-day { width: 11px; height: 11px; border-radius: 2px; background: rgba(255,255,255,0.06); }
+/* Levels are relative to the profile's own busiest day, so a quiet account still reads as active. */
+.heatmap-day[data-level="1"] { background: var(--color-accent-muted); }
+.heatmap-day[data-level="2"] { background: var(--color-accent); }
+.heatmap-day[data-level="3"] { background: var(--color-accent-strong); }
+.heatmap-day[data-level="4"] { background: var(--color-text); }
+.heatmap-caption { margin: 0.5em 0 0; font-size: 0.8rem; color: var(--color-text-muted); }
+
+/* ── Widgets — the board a profile is arranged on ────────────────────── */
+/* Four columns, so small/medium/large map to 1/2/4. Narrow screens collapse to one column and every
+   size becomes full width, which is why the model stores spans rather than coordinates. */
+/* ── Boards and flows ──────────────────────────────────────────────────
+   One component lays out the header bar, the footer, a sidebar and a profile body; what differs is
+   only the flow it was given. A container passes its own flow down to the board inside it. */
+.widget-board { position: relative; min-width: 0; }
+/* Rows have a minimum height rather than a fixed one: dragging a corner downwards sets how tall a
+   widget is at least, and content taller than that still grows rather than being cut off. */
+.widget-board[data-flow="grid"] {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns, 4), 1fr);
+  grid-auto-rows: minmax(var(--row-height, 72px), auto);
+  gap: var(--board-gap, 1.2em);
+  align-items: stretch;
+  align-content: start;
+}
+
+/* Metro's AppHeader is a pivot strip: one unbroken baseline whose navigation section can be
+   swiped sideways while the account tile remains outside the scroller. This remains a normal
+   container flow, so a board author can move, replace or remove any part of it. */
+.widget-board[data-flow="row"] {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: baseline;
+  gap: var(--board-gap, 1.5em);
+  min-width: 0;
+}
+.widget-board[data-flow="row"] > .widget {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0;
+}
+.widget-board[data-flow="row"] > .widget[data-widget="container"] { flex: 1 1 auto; }
+.widget-board[data-flow="row"] > .widget[data-push] { margin-inline-start: auto; }
+.widget-board[data-flow="row"] > .widget[data-widget="account"] { align-self: center; }
+.widget-board[data-flow="row"][data-scroll="inline"] {
+  padding-block: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+.widget-board[data-flow="row"][data-scroll="inline"] > .widget:last-child { padding-inline-end: 12vw; }
+
+.widget-board[data-flow="column"] {
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: stretch;
+  gap: var(--board-gap, 1.2em);
+  min-width: 0;
+}
+.widget-board[data-flow="column"] > .widget {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0;
+}
+.widget-board[data-flow="column"] > .widget[data-push] { margin-block-start: auto; }
+
+/* The grid, drawn only while a corner is being pulled. It exists to be aimed at, so its lines come
+   from the tracks the browser resolved — a repeating gradient cannot describe a grid with gaps. */
+.board-grid { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+/* Faint but visible: a guide, not a decoration. accent-soft alone disappears over a wallpaper. */
+.board-grid-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dotted var(--color-accent-strong);
+  opacity: 0.45;
+}
+.board-grid-line.is-row {
+  top: auto;
+  bottom: auto;
+  left: 0;
+  right: 0;
+  border-left: 0;
+  border-top: 1px dotted var(--color-accent-strong);
+}
+.widget-board.is-snapping > .widget { position: relative; z-index: 1; }
+
+/* The room a drag needs, taken at the foot of the page only. A board packed to its last cell has
+   nothing left to aim at, and a point past the last track resolves to a new row — but growing the
+   nested boards too pushed everything below them down the moment a drag started, so the thing being
+   aimed at was never where it was grabbed. The page can only get taller at the bottom. */
+.page-root > .widget-board.is-arranging { padding-bottom: calc(2em + var(--row-height, 72px)); }
+
+/* Where the widget in hand would land. Solid, like the resize footprint, because it is the answer
+   rather than a guide. */
+.drop-hint {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  border: 1px solid var(--color-accent-strong);
+  background: rgba(84, 104, 224, 0.14);
+  transition: left 0.1s ease-out, top 0.1s ease-out, width 0.1s ease-out, height 0.1s ease-out;
+}
+
+/* A container's board fills the container. A tall container whose board sized itself to its
+   contents left hundreds of pixels of dead box below it, so what a drop over that space meant
+   depended on nothing the eye could see. */
+.widget[data-widget="container"] {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.widget[data-widget="container"] > .widget-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.widget[data-widget="container"] > .widget-content > .widget-board { flex: 1 1 auto; min-height: 0; }
+
+/* The way back out of a container, without the context menu: while a drag is inside it, every
+   container holding it shows a band along its edges, and dropping on one lands the widget on the
+   level that container itself sits on. Laid over the container so nothing shifts. */
+.widget-escape-edge {
+  position: absolute;
+  z-index: 5;
+  /* The same blue the lasso and the drop footprint use, so the whole gesture reads as one thing. */
+  background: rgba(84, 104, 224, 0.32);
+  border: 1px solid var(--color-accent-strong);
+  transition: background 0.12s ease-in-out;
+}
+.widget-escape-edge:hover { background: rgba(84, 104, 224, 0.62); }
+.widget-escape-edge[data-edge="top"] { top: 0; left: 0; right: 0; height: 22px; }
+.widget-escape-edge[data-edge="bottom"] { bottom: 0; left: 0; right: 0; height: 22px; }
+.widget-escape-edge[data-edge="left"] { top: 22px; bottom: 22px; left: 0; width: 22px; }
+.widget-escape-edge[data-edge="right"] { top: 22px; bottom: 22px; right: 0; width: 22px; }
+
+/* The corner itself: a bracket, not a gripper. Metro's chrome is flat, square and made of lines, so
+   this is two edges of a square rather than the diagonal ridges other systems use — no gradient, no
+   radius, nothing raised. Always present while arranging, dim enough to sit quietly under the widget
+   and bright the moment it is pointed at. */
+.widget-resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  width: 12px;
+  height: 12px;
+  border-right: 2px solid var(--color-accent-strong);
+  border-bottom: 2px solid var(--color-accent-strong);
+  opacity: 0.5;
+  cursor: nwse-resize;
+  touch-action: none;
+  transition: opacity 0.12s ease-in-out, width 0.12s ease-in-out, height 0.12s ease-in-out;
+}
+.widget:hover > .widget-resize-handle { opacity: 1; }
+/* Grows rather than lights up on grab: the size is the thing being changed, so the handle says so. */
+.widget-resize-handle:hover,
+.widget-resize-handle:focus-visible { opacity: 1; width: 16px; height: 16px; }
+.widget-resize-handle:focus-visible { outline: 2px dotted var(--color-text); outline-offset: 2px; }
+.widget-board.is-snapping .widget-resize-handle { opacity: 1; }
+
+/* Scrolling, per container, off unless asked for. Only one axis can be named in CSS: setting either
+   overflow property computes the other to auto, so a container told to scroll sideways clips
+   vertically as well. That is stated in the Inspector rather than worked around, because there is no
+   working around it — it is the same rule that used to cut the corner badges off the header bar. */
+.widget-board[data-scroll="inline"] { overflow-x: auto; overscroll-behavior-x: contain; }
+.widget-board[data-scroll="block"] { overflow-y: auto; max-height: 100%; overscroll-behavior-y: contain; }
+.widget-board[data-scroll="both"] { overflow: auto; overscroll-behavior: contain; }
+
+/* ── Anchors ──────────────────────────────────────────────────────────
+   The five positions. What is at the top is a header because it is at the top, and for no other
+   reason — so these rules say where, and nothing about what. */
+.page-rail { width: clamp(280px, 85%, 1200px); margin: 0 auto; }
+/* No background of its own: the anchor inside paints it, from the setting in its board Inspector.
+   Two sources for one effect meant the setting could never turn it off. */
+/* No padding here: the anchor inside paints the background, so anything between it and the top of
+   the window shows as a gap above the shadow. The spacing belongs to the anchor. */
+.page-top {
+  position: relative;
+  z-index: 100;
+  width: 100%;
+  text-shadow: none;
+}
+.page-bottom { position: relative; z-index: 1; width: 100%; margin-top: auto; }
+.anchor-region { position: relative; min-width: 0; }
+.page-top > .anchor-region,
+.page-bottom > .anchor-region { width: 100%; }
+.page-top > .anchor-region { padding: 2em 0 0.6em; }
+.page-bottom > .anchor-region { padding: 0.6em 0 1.2em; }
+
+.link-widget-edit { display: inline-flex; align-items: baseline; gap: 0.5em; }
+.link-widget-href { font-size: 0.85rem; max-width: 18ch; }
+@media screen and (max-width: 900px) {
+  .widget-board[data-flow="grid"] { grid-template-columns: repeat(min(2, var(--grid-columns, 4)), 1fr); }
+  .widget { grid-column: span 2 !important; }
+}
+@media screen and (max-width: 600px) {
+  .widget-board[data-flow="grid"] { grid-template-columns: 1fr; }
+  .widget { grid-column: span 1 !important; }
+}
+
+.widget { min-width: 0; }
+.widget-content { min-width: 0; }
+
+/* A system board is edited on /boards/:id/edit, but its Page Content widget previews the real site
+   route. It remains full-size so the editor shows the actual composition rather than a thumbnail;
+   `inert` in Content.tsx keeps its links and controls from hijacking editing gestures. */
+.content-widget-live-preview { width: 100%; min-width: 0; }
+
+/* Only in edit mode does a widget look like an object you can pick up. */
+.widget-board.is-editing .widget {
+  border: 1px dashed rgba(255,255,255,0.25);
+  padding: 0.6em;
+  cursor: grab;
+  transition: border-color 0.15s, opacity 0.15s;
+}
+.widget-board.is-editing .widget:hover { border-color: var(--color-accent); }
+.widget-board.is-editing .widget.is-dragging { opacity: 0.45; cursor: grabbing; }
+/* No drop-target highlight: the board reorders under the pointer, so the gap already shows where the
+   widget lands. Only the one being carried is marked, and it is marked by being faded out. */
+
+/* The corner badge, where an iPhone puts it: over the widget's own edge rather than in a toolbar,
+   because it acts on that one widget and belongs to it. Nothing on the way up may clip, or half of
+   it disappears. */
+.widget-board.is-editing .widget { position: relative; }
+.widget-remove-badge {
+  position: absolute;
+  top: -0.7em;
+  right: -0.7em;
+  z-index: 2;
+  width: 1.6em;
+  height: 1.6em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-accent);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  /* Counter-rotates against the dance so the glyph stays a target you can actually hit. */
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.widget-remove-badge:hover { background: var(--color-accent); color: #ffffff; }
+
+.widget-chrome { display: flex; align-items: center; justify-content: space-between; gap: 0.6em; margin-bottom: 0.6em; flex-wrap: wrap; }
+/* The badge straddles the top-right corner, so the controls have to start clear of where it lands. */
+.widget-board.is-editing .widget-chrome { padding-right: 1.1em; }
+.widget-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
+.widget-label em { font-style: normal; color: var(--color-text-faint); }
+.widget-controls { display: flex; align-items: center; gap: 0.25em; }
+.widget-btn {
+  background: transparent; border: 1px solid var(--color-text-faint); border-radius: 0;
+  color: var(--color-text-secondary); font-family: inherit; font-size: 0.72rem;
+  padding: 0.2em 0.5em; cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.widget-btn:hover { background: var(--color-accent-soft); border-color: var(--color-accent); color: #ffffff; }
+.widget-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.widget-btn-remove:hover { border-color: var(--color-danger); color: var(--color-danger); }
+.widget-grip { color: var(--color-text-faint); cursor: grab; padding-left: 0.2em; }
+
+/* When horizontal space is tight (1-column span), arrange the management controls vertically. */
+.widget-board.is-editing .widget[data-span="1"] {
+  .widget-chrome {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25em;
+    margin-bottom: 0.35em;
+    padding-right: 1.1em;
+  }
+  .widget-label {
+    font-size: 0.7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .widget-controls {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.2em;
+  }
+}
+
+/* 1x1 widgets: stack controls compactly and size content to fit neatly within 1 grid cell. */
+.widget-board.is-editing .widget[data-span="1"][data-rows="1"] {
+  padding: 0.35em 0.45em;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 0;
+  overflow: hidden;
+
+  .widget-chrome {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15em;
+    margin-bottom: 0.2em;
+    padding-right: 1.2em;
+  }
+  .widget-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+  }
+  .widget-controls {
+    display: flex;
+    flex-direction: row;
+    gap: 0.15em;
+  }
+  .widget-btn {
+    padding: 0.12em 0.3em;
+    font-size: 0.65rem;
+  }
+  .widget-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .metro-avatar-tile {
+    width: 2.2rem;
+    height: 2.2rem;
+  }
+}
+
+.widget[data-widget="account"] {
+  width: fit-content;
+  min-width: 0;
+  justify-self: start;
+
+  &[data-push] {
+    justify-self: end;
+  }
+
+  .metro-avatar-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  .metro-avatar-tile {
+    width: calc(3.4rem * var(--row-fit, 1));
+    height: calc(3.4rem * var(--row-fit, 1));
+    aspect-ratio: 1 / 1;
+  }
+}
+
+.widget-text-fields { display: flex; flex-direction: column; gap: 0.5em; }
+.widget-heading { margin: 0 0 0.4em; font-size: 1.1rem; }
+
+/* ── Widgets Gallery ──────────────────────────────────────────────────
+   A grid of live widgets, above the profile they get added to. Each tile is a real widget rendered
+   at real size and then clipped to a fixed stage, rather than scaled: scaling would shrink the type
+   to something you cannot read, and an unreadable preview is no better than the caption it replaced.
+   What you see is the top of the widget, which is the part that identifies it. */
+.widget-gallery {
+  position: relative;
+  margin-bottom: 2em;
+}
+/* Collapsible: the shelf is useful while you are adding something and in the way the rest of the
+   time, and the page underneath it is the thing being arranged. */
+.widget-gallery-bar {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+}
+.widget-gallery-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent-soft);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.4em 0.8em;
+  cursor: pointer;
+  transition: color 0.15s ease-in-out, border-color 0.15s ease-in-out, background 0.15s ease-in-out;
+}
+.widget-gallery-toggle:hover,
+.widget-gallery-toggle[aria-expanded="true"] {
+  border-color: var(--color-accent);
+  color: #ffffff;
+  background: var(--color-accent-soft);
+}
+.widget-gallery-caret { font-size: 0.7em; }
+
+/* The gallery shelf rendered as a giant tooltip pointing at its toggle button */
+.widget-gallery-tooltip {
+  position: relative;
+  margin-top: 12px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  padding: 1.2em;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+.gallery-tooltip-arrow {
+  position: absolute;
+  top: -8px;
+  left: var(--gallery-arrow-x, 36px);
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  border-right: none;
+  border-bottom: none;
+  transform: rotate(45deg);
+}
+.widget-gallery-search-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1em;
+}
+.widget-gallery-search {
+  flex: 0 1 240px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--color-text-faint);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.4em 0.6em;
+  transition: border-color 0.15s ease-in-out;
+}
+.widget-gallery-search:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+.widget-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: 1em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* The tile itself is the frame and does the clipping; the button sits over it as a sibling of the
+   preview. It cannot be the preview's parent — a timeline preview contains real buttons, and a
+   button inside a button is unparseable. */
+.widget-card {
+  position: relative;
+  cursor: grab;
+  min-width: 0;
+  height: 190px;
+  overflow: hidden;
+  background: var(--color-surface-veil);
+  border: 1px solid var(--color-text-faint);
+  transition: border-color 0.15s ease-in-out;
+}
+.widget-card:hover { border-color: var(--color-accent-strong); }
+.widget-card-preview {
+  display: block;
+  padding: 0.9em;
+  /* The tile is a window onto the widget, so the widget keeps its own size and the window does the
+     cutting off. pointer-events belt-and-braces with `inert`, for browsers without it. */
+  pointer-events: none;
+}
+.widget-card-button {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+}
+/* A preview is already inside a tile with its own ground, and a second blur would only muddy it. */
+.widget-card-preview .widget,
+.widget-card-preview .feed-post,
+.widget-card-preview .composer,
+.widget-card-preview .profile-bio {
+  background: transparent;
+  backdrop-filter: none;
+  padding: 0;
+}
+/* Fades the cut-off edge into the tile rather than slicing a line through whatever is there, and
+   carries the label that says what clicking does. */
+.widget-card-name {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  padding: 0.7em;
+  min-height: 4.5em;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--color-surface) 70%);
+  transition: color 0.15s ease-in-out;
+}
+.widget-card-button:hover .widget-card-name { color: #ffffff; }
+.widget-card-button:focus-visible { outline: 2px dotted var(--color-text); outline-offset: -4px; }
+
+/* ── About ───────────────────────────────────────────────────────────── */
+.about-page { max-width: 62ch; }
+.about-page h1 { font-size: 1.7rem; margin: 0 0 0.6em; }
+.about-page p { color: var(--color-text-secondary); font-weight: 300; line-height: 1.7; margin: 0 0 1em; }
+.about-lead { font-size: 1.1rem; color: var(--color-text); }
+.about-page code { font-size: 0.92em; }
+.about-cta { margin-top: 1.6em; }
+.about-cta a { color: var(--color-accent-strong); font-weight: 600; text-decoration: none; }
+.about-cta a:hover { text-decoration: underline; }
+
+/* Footer link to it, rather than the text itself: it is read once, not on every page. */
+.footer-about-link { display: block; font-size: 0.85rem; color: var(--color-text-muted); text-decoration: none; margin-bottom: 0.3em; }
+.footer-about-link:hover { color: #ffffff; text-decoration: underline; }
+
+/* Content does not paint a second panel inside its widget. A surface is an explicit board-design
+   choice made in the Inspector, not a default imposed on every piece of content. */
+.feed-post,
+.composer,
+.profile-bio,
+.about-page {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+/* Widgets begin as transparent layout/content primitives. Tint and blur are available from the
+   Inspector and only become visible after the board author opts into them. */
+.widget,
+.board-surface {
+  /* Unset unless the Inspector names one, so a widget inherits the page's face by default. */
+  font-family: var(--widget-font, inherit);
+  background: rgba(16, 12, 48, var(--widget-veil-alpha, 0));
+  /* The whole value comes from the board, including the word "none" when the blur is off — see
+     backdropFilter() in Services/widgetStyle for why zero has to remove the property rather than set
+     it to blur(0px).
+
+     No -webkit- twin here, or anywhere else in this file. The build adds the prefix itself, and a
+     hand-written prefixed line *after* the standard one makes it drop the standard one instead —
+     which had quietly left every frosted surface in the app webkit-only, so the blur was missing in
+     Firefox entirely. */
+  backdrop-filter: var(--widget-backdrop, none);
+}
+.widget { padding: clamp(0.9em, 2vw, 1.3em); }
+
+/* ── Widget appearance, from the Inspector ─────────────────────────────
+   Words rather than numbers, so what a stored document can say is limited to what is listed here —
+   a value that is not one of these simply matches nothing. */
+.widget[data-border="hairline"], .board-surface[data-border="hairline"] { border: 1px solid rgba(255, 255, 255, 0.18); }
+.widget[data-border="solid"], .board-surface[data-border="solid"] { border: 2px solid rgba(255, 255, 255, 0.35); }
+.widget[data-border="accent"], .board-surface[data-border="accent"] { border: 2px solid var(--color-accent); }
+
+/* The drop shadow, which is mostly what an anchored bar wants: it lifts the top or bottom of the
+   page off whatever is scrolling underneath it. */
+.widget[data-shadow="soft"], .board-surface[data-shadow="soft"] { box-shadow: 0 8px 28px rgba(0, 0, 0, 0.38); }
+.widget[data-shadow="hard"], .board-surface[data-shadow="hard"] { box-shadow: 0 4px 0 rgba(0, 0, 0, 0.55); }
+
+/* The widget currently open in the Inspector, so there is no doubt which one the panel is about. */
+.widget[data-inspecting], .board-surface[data-inspecting] { outline: 2px solid var(--color-accent-strong); outline-offset: -2px; }
+
+/* The reading column stays transparent: it positions content, it does not paint it. */
+.file-content { background: transparent; }
+
+.feed-post { border-bottom: none; margin-bottom: 0.8em; }
+.feed { gap: 0.8em; }
+/* Already inside a blurred widget on a profile, so a second pass would only darken it further. */
+.widget .profile-bio, .widget .feed-post, .widget .composer {
+  background: transparent;
+  backdrop-filter: none;
+  padding: 0;
+}
+
+/* The + that adds a header entry, and what it becomes when clicked. It is the same size and face as
+   the items beside it — it is one of them, in the moment before it has a name. */
+/* Menus and popovers are opaque. They sit over content rather than over the wallpaper, and anything
+   translucent there means reading the menu against whatever it happens to cover. */
+.metro-dropdown-menu {
+  background: var(--color-surface) !important;
+  backdrop-filter: none;
+}
+
+/* Reported inline rather than through the page's error state, which would replace the whole profile
+   with a message and take the unsaved arrangement with it. */
+.editor-status.is-error { color: var(--color-danger); }
+
+/* ── Inspector ─────────────────────────────────────────────────────────
+   One widget's whole configuration, hanging off the widget itself so there is never any doubt what
+   is being changed. Portalled to <body> and positioned in viewport coordinates by <Anchored>, which
+   is why it sets no `position` of its own — see the note on the account menu. */
+.inspector {
+  z-index: 1300;
+  width: min(360px, calc(100vw - 2em));
+  transition: width 0.15s ease-in-out;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-weight: 300;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  text-shadow: none;
+  text-transform: none;
+}
+/* A tab that needs the room gets it, rather than every panel being sized for the widest one. */
+.inspector.is-wide { width: min(560px, calc(100vw - 2em)); }
+.inspector-body {
+  display: flex;
+  flex-direction: column;
+  /* Inherits the pixel max-height Anchored set on the panel, so the arrow outside stays visible. */
+  max-height: inherit;
+  overflow-y: auto;
+}
+.inspector-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.6em;
+  padding: 0.7em 0.9em; border-bottom: 1px solid var(--color-accent-soft);
+}
+.inspector-title { margin: 0; font-size: 0.95rem; font-weight: 600; letter-spacing: 0.02em; }
+.inspector-actions { display: flex; align-items: center; gap: 0.35em; }
+.inspector-btn,
+.inspector-close {
+  background: none; border: none; color: var(--color-text-muted);
+  font: inherit; cursor: pointer; padding: 0.2em;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: color 0.15s ease-in-out;
+}
+.inspector-btn:hover,
+.inspector-close:hover { color: #ffffff; }
+
+.inspector-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--color-accent-soft);
+}
+.inspector-tab {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--color-text-secondary); font: inherit; font-size: 0.85rem;
+  padding: 0.55em 0.4em; cursor: pointer;
+  transition: color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+}
+.inspector-tab:hover { color: #ffffff; }
+.inspector-tab.is-active { color: #ffffff; border-bottom-color: var(--color-accent); }
+
+.inspector-panel { display: flex; flex-direction: column; gap: 0.9em; padding: 0.9em; min-width: 0; }
+.inspector-panel select,
+.inspector-panel input,
+.inspector-panel textarea { max-width: 100%; }
+.inspector-field { display: flex; flex-direction: column; gap: 0.35em; }
+.inspector-field > span {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 0.5em;
+  font-size: 0.8rem; color: var(--color-text-secondary);
+}
+/* The live value beside its own label, so a slider says what it is set to without a second row. */
+.inspector-field em { font-style: normal; color: var(--color-text); font-variant-numeric: tabular-nums; }
+.inspector-field select,
+.inspector-field input[type="text"],
+.inspector-field input:not([type]) {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--color-text-faint);
+  color: var(--color-text);
+  font: inherit; padding: 0.4em 0.5em;
+}
+.inspector-field input[type="range"] { width: 100%; accent-color: var(--color-accent); }
+.inspector-check { display: flex; align-items: center; gap: 0.5em; font-size: 0.85rem; }
+.inspector-colour { display: flex; align-items: center; gap: 0.5em; }
+.inspector-colour input[type="color"] {
+  width: 2.6em; height: 2em; padding: 0; background: none;
+  border: 1px solid var(--color-text-faint); cursor: pointer;
+}
+.inspector-reset { align-self: flex-start; }
+.inspector-css {
+  background: #000000;
+  border: 1px solid var(--color-text-faint);
+  color: var(--color-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8rem;
+  padding: 0.5em;
+  resize: vertical;
+  width: 100%;
+}
+.inspector-note { margin: 0; font-size: 0.75rem; line-height: 1.5; color: var(--color-text-muted); }
+
+/* ── Winamp (Webamp) ───────────────────────────────────────────────────
+   The player draws its own chrome from a skin, so the widget only reserves room for it and keeps it
+   inside its own box. The classic windows are a fixed 275px wide; below that the skin crops rather
+   than reflowing, which is why the widget's smallest size is two columns. */
+/* Sized in the component to exactly the stack of windows, because Webamp centres its windows inside
+   whatever element it is given: a host any larger leaves the player adrift in the middle of an empty
+   box, which is what made the widget look broken at anything above its smallest size. Centred here
+   so the extra room a wider widget has goes around the player rather than under it. */
+/* The frame owns the layout height; the host stays exactly the size Webamp centres against and is
+   scaled down when the column is narrower than a Winamp window. */
+.webamp-frame { position: relative; width: 100%; min-width: 0; }
+.webamp-widget { position: relative; margin: 0 auto; transform-origin: top left; }
+.webamp-frame > .webamp-widget { position: absolute; top: 0; left: 0; margin: 0; }
+
+/* Winamp's own window controls, disabled. Closing a window inside a widget leaves an empty box with
+   no titlebar left to reopen it from, and "minimise" means nothing for something already inside a
+   page rather than on a desktop. The close is also refused in JavaScript through onWillClose — this
+   only removes the affordance, and hiding a control is not the same as disabling it. */
+.webamp-widget #close,
+.webamp-widget #minimize,
+.webamp-widget #shade,
+.webamp-widget #equalizer-close,
+.webamp-widget #equalizer-shade,
+.webamp-widget #playlist-close-button,
+.webamp-widget #playlist-shade-button { display: none !important; }
+
+/* While the page is being arranged, and in a gallery tile, the real player is still there — it just
+   stops taking the pointer. Webamp's windows drag themselves, and two drag implementations over the
+   same pixels means neither works, so the drag falls through to the widget instead. */
+.webamp-widget.is-inert { pointer-events: none; }
+.webamp-widget.is-failed { margin: 0; font-size: 0.85rem; color: var(--color-text-muted); width: auto; height: auto; }
+
+/* A container previews as the arrangement it makes, in whichever direction it is set to. */
+.container-preview { display: flex; gap: 0.4em; width: 100%; }
+.container-preview[data-flow="column"] { flex-direction: column; }
+.container-preview[data-flow="grid"] { display: grid; grid-template-columns: repeat(3, 1fr); }
+.container-preview-slot {
+  flex: 1 1 0;
+  min-height: 2.6em;
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ── Selection, lasso and context menu ─────────────────────────────────
+   Picking several widgets at once, so they can be acted on together — wrapping them into a container
+   above all, which is the one operation that needs a group rather than a widget. */
+.widget.is-selected { outline: 2px solid var(--color-accent-strong); outline-offset: 3px; }
+
+/* Drawn in viewport coordinates, over everything, because the band is a gesture rather than part of
+   the page: it must not be clipped by whichever container it happens to start in. */
+/* Absolute against the board, which is why drawBand converts the pointer's viewport coordinates
+   into board-relative ones. Without a position at all it sat in normal flow and its size pushed the
+   widgets around, which is what made it look like the coordinates were scrambled. */
+.widget-lasso {
+  position: absolute;
+  z-index: 99999;
+  pointer-events: none;
+  border: 1px solid var(--color-accent-strong);
+  background: rgba(84, 104, 224, 0.14);
+}
+
+.context-menu {
+  z-index: 1400;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-weight: 300;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  text-shadow: none;
+  text-transform: none;
+}
+.context-menu-row { position: relative; display: flex; }
+.context-menu-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.6em;
+  width: 100%;
+  padding: 0.5em 0.8em;
+  background: none; border: none;
+  color: inherit; font: inherit; text-align: left;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+.context-menu-item:hover,
+.context-menu-item:focus-visible { background: var(--color-accent-soft); outline: none; }
+.context-menu-item.is-danger { color: var(--color-danger); }
+.context-menu-caret { color: var(--color-text-muted); }
+/* Opens beside its row rather than below it, so the parent stays readable while choosing. */
+.context-menu-sub {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Settings ──────────────────────────────────────────────────────────
+   The account and nothing else: how a page looks is decided on the page, in the Inspector. */
+.settings-form { display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem; }
+.settings-form small { font-size: 0.78rem; color: var(--color-text-muted); }
+.settings-rule { margin: 2rem 0; border: none; border-top: 1px solid var(--color-surface-veil); }
+.settings-danger-title { color: var(--color-danger); }
+.settings-danger {
+  padding: 1rem;
+  margin-top: 1rem;
+  border: 1px solid var(--color-danger);
+  background: var(--color-danger-bg);
+}
+.settings-danger p { margin-top: 0; }
+.settings-delete {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #ffffff;
+}
+
+/* ── Inspector: font and colour ────────────────────────────────────────
+   Both are shown rather than named: a list of font names set in one font, or a hex field with no
+   swatches, asks you to imagine the result of every choice. */
+.inspector-font-preview {
+  margin: -0.4em 0 0;
+  padding: 0.5em 0.6em;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 2px solid var(--color-accent);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: var(--color-text);
+}
+.inspector-swatches {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
+}
+.inspector-swatch {
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s ease-in-out, border-color 0.1s ease-in-out;
+}
+.inspector-swatch:hover { transform: scale(1.15); }
+/* A ring rather than a tick: a mark drawn on the swatch would be unreadable on half the palette. */
+.inspector-swatch.is-active { border-color: #ffffff; outline: 1px solid var(--color-text); outline-offset: 1px; }
+.inspector-swatch:focus-visible { outline: 2px dotted var(--color-text); outline-offset: 2px; }
+.inspector-hex {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+/* ── Board settings gear, spacer, media picker ─────────────────────── */
+.anchor-settings {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 4;
+  width: 1.8em;
+  height: 1.8em;
+  padding: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease-in-out, background 0.15s ease-in-out;
+}
+.anchor-settings:hover { background: var(--color-accent); color: #ffffff; }
+
+.inspector-subtitle { color: var(--color-text-muted); font-weight: 300; }
+.inspector-reset.is-danger { border-color: var(--color-danger); color: var(--color-danger); }
+
+.inspector-media { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.inspector-media-tile {
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+.inspector-media-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.inspector-media-tile.is-active { border-color: var(--color-accent-strong); }
+
+/* Invisible by design; visible only where an invisible thing would read as a bug. */
+.spacer-widget { min-height: 1.5em; }
+.spacer-widget.is-editing { min-height: 2.5em; border: 1px dashed rgba(255, 255, 255, 0.2); }
+.spacer-widget.is-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 5em;
+  color: var(--color-text-muted);
+}
+.spacer-mark { width: 3.5em; height: 3.5em; }
+
+/* ── Anchored panels ───────────────────────────────────────────────────
+   The arrow tracks the anchor, not the panel, so it keeps pointing at the right thing after the
+   panel has been shifted to stay on screen. */
+.anchored { overflow: visible; }
+.anchored-arrow {
+  position: absolute;
+  left: var(--arrow-x, 16px);
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  transform: rotate(45deg);
+}
+.anchored[data-side="below"] .anchored-arrow {
+  top: -7px;
+  border-right: none;
+  border-bottom: none;
+}
+.anchored[data-side="above"] .anchored-arrow {
+  bottom: -7px;
+  border-left: none;
+  border-top: none;
+}
+
+/* ── No sideways scrolling, ever ───────────────────────────────────────
+   A widget can be sized and placed by its owner, so something will eventually be wider than the page
+   holds. Clipping is the guarantee; `clip` rather than `hidden` because hidden would make this a
+   scroll container and take the vertical scrolling with it, while clip leaves the other axis alone.
+   Anything that genuinely needs to scroll sideways says so on its own container. */
+#app { overflow-x: clip; }
+
+/* ── Anchor backgrounds ────────────────────────────────────────────────
+   Painted behind whatever is at an anchor, and only when something is there. Top and bottom default
+   to a shadow so thin chrome stays readable over any wallpaper. */
+.anchor-region[data-background="shadow"] {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--anchor-color, #000000) calc(var(--anchor-intensity, 0.55) * 100%), transparent),
+    transparent
+  );
+}
+.anchor-region[data-anchor="bottom"][data-background="shadow"] {
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--anchor-color, #000000) calc(var(--anchor-intensity, 0.55) * 100%), transparent),
+    transparent
+  );
+}
+.anchor-region[data-background="blur"] {
+  backdrop-filter: blur(var(--anchor-blur, 20px)) saturate(130%);
+}
+.anchor-region[data-background="solid"] {
+  background: color-mix(in srgb, var(--anchor-color, #101020) calc(var(--anchor-intensity, 0.55) * 100%), transparent);
+}
+
+/* Where a dragged widget would land. */
+.anchor-region.is-drop-target { outline: 2px dashed var(--color-accent-strong); outline-offset: -2px; }
+.anchor-empty {
+  margin: 0;
+  padding: 1.4em 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+}
+
+
+/* ── Drop guides ───────────────────────────────────────────────────────
+   Every anchor that could take the widget says so while it is in the air. */
+.anchor-region.is-target {
+  outline: 1px dashed var(--color-accent-strong);
+  outline-offset: -1px;
+  min-height: 3em;
+}
+.anchor-guide {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 5;
+  padding: 0.1em 0.5em;
+  background: var(--color-accent);
+  color: #ffffff;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: none;
+  pointer-events: none;
+}
+.anchor-region.is-drop-target { outline: 2px solid var(--color-accent-strong); outline-offset: -2px; }
+
+/* The band never leaves the board it started on. */
+
+/* ── Empty board ───────────────────────────────────────────────────────
+   Shown wherever a board is empty while arranging, so nothing reads as broken or as finished. */
+.empty-board {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35em;
+  padding: 2em 1em;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+.empty-board-icon { width: 2.6em; height: 2.6em; opacity: 0.7; }
+.empty-board-text { margin: 0; font-size: 0.9rem; color: var(--color-text-secondary); }
+.empty-board-hint { margin: 0; font-size: 0.78rem; }
+/* A row lays its children out side by side; the placeholder is the only one and should fill it. */
+.widget-board[data-flow="row"] .empty-board,
+
+/* A disabled anchor while arranging: just enough to find its settings again. */
+.anchor-region.is-disabled {
+  display: flex;
+  align-items: center;
+  min-height: 2.2em;
+  padding: 0.2em 2.6em 0.2em 0.4em;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  opacity: 0.6;
+}
+.anchor-region.is-disabled:hover { opacity: 1; }
+.anchor-disabled-label {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* ── The board's settings, as a sidebar ────────────────────────────────
+   It configures the whole page rather than one thing on it, so it has nothing to point at and stays
+   put at the edge instead of following a widget around. */
+.inspector.is-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  max-width: 100vw;
+  border-width: 0 0 0 2px;
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+}
+.inspector.is-sidebar .inspector-body { max-height: 100%; flex: 1; }
+/* The gear sits under it once it is open, so it moves aside. */
+/* The gear would otherwise sit under the sidebar; it is hidden while the sidebar has its own. */
+body:has(.inspector.is-sidebar) .board-settings { display: none; }
+
+.inspector.is-floating {
+  position: fixed;
+  z-index: 1300;
+  max-height: calc(100vh - 24px);
+  display: flex;
+  flex-direction: column;
+}
+.inspector.is-floating .inspector-head {
+  cursor: grab;
+  user-select: none;
+}
+.inspector.is-floating .inspector-head:active {
+  cursor: grabbing;
+}
+.inspector.is-floating .inspector-body {
+  max-height: calc(100vh - 80px);
+  flex: 1;
+}
+
+@media screen and (max-width: 520px) {
+  .inspector.is-sidebar { width: 100vw; border-left-width: 0; }
+  .inspector.is-floating { left: 0 !important; top: 0 !important; width: 100vw !important; max-height: 100vh !important; }
+  body:has(.inspector.is-sidebar) .board-settings { display: none; }
+}
+
+/* Drawn chrome marks, sized to the button they sit in. */
+.glyph { width: 1em; height: 1em; display: block; }
+.widget-btn .glyph, .widget-remove-badge .glyph, .inspector-close .glyph, .board-settings .glyph { margin: 0 auto; }
+.widget-grip .glyph { width: 1.1em; height: 1.1em; }
+
+/* The name sits over the tile, so the preview stops short of it rather than running underneath. */
+.widget-card-preview { padding-bottom: 2.4em; }
+.widget-card-name {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--color-surface) 60%);
+}
+
+/* The edge you pull to widen the sidebar. */
+.inspector-grip {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  touch-action: none;
+  background: transparent;
+  transition: background 0.12s ease-in-out;
+}
+.inspector-grip:hover { background: var(--color-accent); }
+
+/* The page makes room for the sidebar instead of sitting under it. */
+#app { padding-right: var(--inspector-width, 0); transition: padding-right 0.12s ease-in-out; }
+
+.widget-btn.is-danger { border-color: var(--color-danger); color: var(--color-danger); }
+
+
+.page-root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%;
+  width: 100%;
+}
+.page-root::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0 0 auto;
+  height: 9rem;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-surface) 84%, transparent),
+    transparent
+  );
+}
+.page-root > .widget-board {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 100%;
+  width: clamp(280px, 85%, 1200px);
+  margin-inline: auto;
+  padding: 2em 0;
+}
+.page-root > .widget-board > .widget[data-anchor="top"] { padding: 0 0 0.6em; }
+.page-root > .widget-board > .widget[data-anchor="bottom"] { padding: 0.6em 0 0; }
+.page-root .widget .file-content { width: 100%; }
+@media screen and (max-width: 768px) {
+  .page-root > .widget-board { width: 95%; }
+}
+
+/* ── Board discovery and management ─────────────────────────────────── */
+.board-feed { width: 100%; }
+.board-feed-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.2em;
+  margin-bottom: 1.4em;
+}
+.board-feed-head h1 { margin: 0 0 0.2em; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 200; }
+.board-feed-head p { margin: 0; color: var(--color-text-secondary); }
+.board-feed-modes, .board-manager-actions { display: flex; gap: 0.65em; flex-wrap: wrap; }
+.board-feed-modes button,
+.board-manager-actions button,
+.board-manager-actions a {
+  border: 1px solid var(--color-text-faint);
+  background: var(--color-surface-veil);
+  color: var(--color-text-secondary);
+  padding: 0.55em 0.85em;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.board-feed-modes button:hover,
+.board-feed-modes button.is-active,
+.board-manager-actions button:hover,
+.board-manager-actions a:hover { border-color: var(--color-accent); color: var(--color-text); }
+.board-manager-actions .is-danger { border-color: var(--color-danger); color: var(--color-danger); }
+.board-feed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 1em;
+}
+.board-discovery-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 240px;
+  padding: 1em;
+  overflow: hidden;
+  background: var(--color-surface-veil);
+  border: 1px solid var(--color-text-faint);
+  color: var(--color-text);
+  text-decoration: none;
+  backdrop-filter: blur(16px) saturate(130%);
+  transition: border-color 0.16s ease-in-out, transform 0.16s ease-in-out;
+}
+.board-discovery-card:hover { border-color: var(--color-accent); transform: translateY(-3px); }
+.board-discovery-window {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 0.35em;
+  height: 110px;
+  margin-bottom: 1em;
+  overflow: hidden;
+}
+.board-preview-node {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-text-faint);
+  background: var(--color-surface-veil);
+}
+.board-preview-node.is-container { gap: 0.2em; padding: 0.2em; }
+.board-preview-node.is-container[data-flow="row"] { flex-direction: row; align-items: stretch; }
+.board-preview-node.is-container[data-flow="column"] { flex-direction: column; }
+.board-preview-node.is-container[data-flow="grid"] {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+}
+.board-preview-node.is-container > .board-preview-node { flex: 1 1 0; }
+.board-preview-node.is-container[data-flow="grid"] > .board-preview-node[data-size="large"] { grid-column: span 4; }
+.board-preview-node.is-container[data-flow="grid"] > .board-preview-node[data-size="medium"] { grid-column: span 2; }
+.board-preview-node.is-leaf {
+  align-items: center;
+  justify-content: center;
+  padding: 0.25em 0.4em;
+  color: var(--color-text-secondary);
+  background: var(--color-accent-soft);
+}
+.board-preview-node-text {
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.64rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.board-preview-node .widget-icon { width: 1.25rem; height: 1.25rem; opacity: 0.72; }
+.board-preview-node-placeholder { display: grid; flex: 1; place-items: center; color: var(--color-text-faint); }
+.board-discovery-window.is-empty {
+  place-items: center;
+  align-content: center;
+  gap: 0.35em;
+  border: 1px dashed var(--color-text-faint);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+.board-discovery-window.is-empty .widget-icon { width: 2rem; height: 2rem; }
+.board-discovery-copy { display: flex; flex-direction: column; gap: 0.35em; flex: 1; }
+.board-discovery-copy strong { font-size: 1.25rem; font-weight: 400; }
+.board-discovery-copy > span { color: var(--color-text-secondary); line-height: 1.4; }
+.board-discovery-meta { display: flex; align-items: center; gap: 0.5em; margin-top: 1em; color: var(--color-text-muted); font-size: 0.82rem; }
+.board-discovery-meta img { border-radius: 50%; margin: 0; }
+.board-discovery-views { margin-inline-start: auto; }
+
+.board-manager { max-width: 1000px; }
+.board-manager-lead, .board-manager-hint { color: var(--color-text-secondary); }
+.board-manager-list { display: grid; gap: 1em; }
+.board-manager-card, .board-create {
+  padding: clamp(1em, 3vw, 1.5em);
+  background: var(--color-surface-veil);
+  border: 1px solid var(--color-text-faint);
+  backdrop-filter: blur(16px) saturate(130%);
+}
+.board-manager-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1em; }
+.board-manager-card-head h2 { margin: 0 0 0.35em; }
+.board-state { display: inline-block; margin-inline-end: 0.5em; color: var(--color-text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.board-state.is-primary { color: var(--color-accent-strong); }
+.board-manager-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.9em; margin: 1em 0; }
+.board-manager-fields .is-wide { grid-column: 1 / -1; }
+.board-manager-fields input, .board-manager-fields textarea {
+  width: 100%;
+  border: 1px solid var(--color-text-faint);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 0.65em;
+  font: inherit;
+}
+.board-manager-fields textarea { min-height: 5em; resize: vertical; }
+.board-create { margin-top: 1.5em; }
+.board-create h2 { margin-top: 0; }
+@media screen and (max-width: 650px) {
+  .board-feed-head, .board-manager-card-head { align-items: stretch; flex-direction: column; }
+  .board-manager-fields { grid-template-columns: 1fr; }
+}
+
+/* ── Owner administration ───────────────────────────────────────────── */
+.admin-page { width: 100%; max-width: 1100px; }
+.admin-head, .admin-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+}
+.admin-head h1 { margin-bottom: 0.2em; }
+.admin-head p, .admin-section > p { color: var(--color-text-secondary); }
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8em;
+  margin: 1.5em 0;
+}
+.admin-stats > div {
+  display: flex;
+  flex-direction: column;
+  padding: 1.1em;
+  background: var(--color-surface-veil);
+  border: 1px solid var(--color-separator);
+  border-inline-start: 4px solid var(--color-accent);
+  backdrop-filter: blur(16px) saturate(130%);
+}
+.admin-stats strong { font-size: 2rem; font-weight: 200; }
+.admin-stats span { color: var(--color-text-muted); }
+.admin-section {
+  margin-top: 1em;
+  padding: clamp(1em, 3vw, 1.5em);
+  background: var(--color-surface-veil);
+  border: 1px solid var(--color-separator);
+  backdrop-filter: blur(16px) saturate(130%);
+}
+.admin-section h2 { margin: 0 0 0.7em; }
+.admin-page-assignments { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8em; }
+.admin-page-assignment {
+  min-width: 0;
+  padding: 0.8em;
+  border: 1px solid var(--color-separator);
+  background: transparent;
+}
+.admin-page-assignment header { display: flex; align-items: center; justify-content: space-between; gap: 0.7em; margin-bottom: 0.8em; }
+.admin-page-assignment header > div, .admin-assignment-field { display: flex; flex-direction: column; gap: 0.3em; }
+.admin-page-assignment strong { text-transform: capitalize; }
+.admin-page-assignment small, .admin-assignment-field > span { color: var(--color-text-secondary); }
+.admin-page-assignment a { color: var(--color-accent-strong); font-size: 0.82rem; text-decoration: none; }
+.admin-page-assignment a:hover { text-decoration: underline; }
+.admin-section-head input {
+  min-width: 0;
+  padding: 0.65em;
+  border: 1px solid var(--color-outline);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+.metro-select { min-width: 0; }
+.metro-select-trigger {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  padding: 0.65em;
+  border: 1px solid var(--color-outline);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: border-color 0.12s ease-in-out, background-color 0.12s ease-in-out;
+}
+.metro-select-trigger:hover,
+.metro-select-trigger.is-open { border-color: var(--color-accent-strong); background: var(--color-accent-soft); }
+.metro-select-trigger:disabled { opacity: 0.5; cursor: wait; }
+.metro-select-trigger > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.metro-select-chevron {
+  flex: 0 0 auto;
+  width: 0.55em;
+  height: 0.55em;
+  border-inline-end: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-0.15em) rotate(45deg);
+  transition: transform 0.16s ease-out;
+}
+.metro-select-trigger.is-open .metro-select-chevron { transform: translateY(0.15em) rotate(225deg); }
+@keyframes metro-select-open-below {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes metro-select-open-above {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes metro-select-option-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.metro-select-menu {
+  z-index: 1400;
+  border: 2px solid var(--color-outline);
+  background: var(--color-surface);
+  box-shadow: 0 12px 36px var(--color-surface-veil);
+  color: var(--color-text);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-weight: 300;
+  text-shadow: none;
+}
+.metro-select-menu[data-side="below"] { animation: metro-select-open-below 0.16s cubic-bezier(0.16, 1, 0.3, 1); }
+.metro-select-menu[data-side="above"] { animation: metro-select-open-above 0.16s cubic-bezier(0.16, 1, 0.3, 1); }
+.metro-select-menu .anchored-arrow { border-color: var(--color-outline); }
+.metro-select-list { max-width: calc(100vw - 20px); max-height: inherit; overflow-y: auto; }
+.metro-select-option {
+  width: 100%;
+  min-height: 2.7em;
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  padding: 0.65em 0.8em;
+  border: 0;
+  border-bottom: 1px solid var(--color-separator);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  animation: metro-select-option-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--option-order, 0) * 18ms);
+}
+.metro-select-option:last-child { border-bottom: 0; }
+.metro-select-option:hover,
+.metro-select-option:focus { background: var(--color-accent-soft); color: var(--color-text); outline: none; }
+.metro-select-mark { width: 4px; height: 1.35em; flex: 0 0 auto; background: transparent; }
+.metro-select-option.is-selected .metro-select-mark { background: var(--color-accent-strong); }
+.metro-select-option.is-selected { color: var(--color-text); }
+@media (prefers-reduced-motion: reduce) {
+  .metro-select-menu[data-side],
+  .metro-select-option { animation: none; }
+  .metro-select-chevron { transition: none; }
+}
+.admin-table-wrap { overflow-x: auto; border: 1px solid var(--color-separator); }
+.admin-table { width: 100%; min-width: 720px; border-collapse: collapse; }
+.admin-table th, .admin-table td {
+  padding: 0.8em;
+  border: none;
+  border-bottom: 1px solid var(--color-separator);
+  text-align: start;
+  vertical-align: middle;
+}
+.admin-table th + th, .admin-table td + td { border-inline-start: 1px solid var(--color-separator); }
+.admin-table th {
+  background: var(--color-surface);
+  border-bottom: 2px solid var(--color-outline);
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.admin-table tbody tr:last-child td { border-bottom: none; }
+.admin-table tbody tr:hover td { background: var(--color-accent-soft); }
+.admin-table td small { display: block; margin-top: 0.25em; color: var(--color-text-muted); }
+.admin-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.5em; white-space: nowrap; }
+.admin-row-actions button, .admin-row-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.2em;
+  padding: 0.35em 0.65em;
+  border: 1px solid var(--color-outline);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.admin-row-actions button:hover, .admin-row-actions a:hover {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+}
+.admin-row-actions .is-danger { border-color: var(--color-danger); color: var(--color-danger); }
+.admin-page :is(button, a, input, select):focus-visible {
+  outline: 2px solid var(--color-outline);
+  outline-offset: 2px;
+}
+@media screen and (max-width: 700px) {
+  .admin-head, .admin-section-head { align-items: stretch; flex-direction: column; }
+  .admin-stats, .admin-page-assignments { grid-template-columns: 1fr; }
+}
+
+
+/* The page's own settings: one button, top right, opening the page inspector. Its styling was lost
+   when the anchor rules around it were removed, which left it an unstyled inline button stretched
+   across the top of the page. */
+.board-settings {
+  position: fixed;
+  top: 0.8em;
+  right: 0.8em;
+  z-index: 1200;
+  width: 2.2em;
+  height: 2.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+  text-shadow: none;
+  cursor: pointer;
+  transition: background 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+.board-settings:hover { background: var(--color-accent); color: #ffffff; }
+/* Hidden only while the sidebar it opens is showing, which carries its own close. */
+body:has(.inspector.is-sidebar) .board-settings { display: none; }
+
+
+/* Nothing eases while the sidebar is being dragged wider: a transition toward a value that changes
+   every frame is exactly what makes a drag feel choppy. */
+.is-resizing-inspector .inspector,
+.is-resizing-inspector #app {
+  transition: none;
+}
+
+
+/* The tile's drag surface: over the inert preview, under the footer button that takes the click. */
+.widget-card-drag {
+  position: absolute;
+  inset: 0 0 2.4em 0;
+  z-index: 1;
+  cursor: grab;
+}
+.widget-card-button { z-index: 2; }
+
+
+/* Filling the rows it was given, so a height set by dragging is the widget's height. */
+.widget-board[data-flow="grid"] > .widget { min-height: 0; }
+
+
+/* The footprint a resize will land on. It eases between cells, which is the whole point — the widget
+   itself snaps, and this is what shows where the snap is going. */
+.resize-preview {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  /* Solid where the guides are dotted: the footprint is the answer, the grid is the paper. */
+  border: 1px solid var(--color-accent-strong);
+  background: rgba(84, 104, 224, 0.1);
+  transition: left 0.12s ease-out, top 0.12s ease-out, width 0.12s ease-out, height 0.12s ease-out;
+}
+.resize-preview-size {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 0.1em 0.4em;
+  background: var(--color-accent);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  text-shadow: none;
+}

@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import ExternalLink from "../../Common/Components/ExternalLink/ExternalLink";
 import SmartImage from "../../Common/Components/SmartImage/SmartImage";
-import { assetUrl } from "../../Services/config";
-import { useProfileScope } from "../context";
+import { assetUrl } from "../../Services/AppConfig";
+import { useProfileScope } from "../ProfileScopeProvider";
 
 /** Who this is: avatar, name, handle, headline, and the few facts that were filled in. */
 export default function Identity() {

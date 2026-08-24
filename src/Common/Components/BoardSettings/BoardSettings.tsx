@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { usePageLayout } from "../../../Services/pageLayout";
+import { usePageLayout } from "../../../Services/PageLayoutProvider";
 import Glyph from "../WidgetIcon/Glyph";
 
 /** The one settings button, for the container the whole page/board is. */

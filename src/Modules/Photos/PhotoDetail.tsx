@@ -2,8 +2,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import Skeleton from "../../Common/Components/Skeleton/Skeleton";
 import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
 import { CommentIcon, HeartIcon } from "./PhotoGallery";
-import { Link, useRouter } from "../../Services/router";
-import { useAuth } from "../../Services/auth";
+import { AppLink, useRouter } from "../../Services/AppRouter";
+import { useAuth } from "../../Services/AuthProvider";
 import {
   addComment,
   deleteComment,
@@ -14,8 +14,8 @@ import {
   photoRoute,
   toggleLike,
   updatePhoto,
-} from "../../Services/photos";
-import type { PhotoDetail as PhotoDetailData, PhotoPost } from "../../Types";
+} from "../../Services/PhotoService";
+import type { PhotoDetail as PhotoDetailData, PhotoPost } from "../../Types/TypeRegistry";
 
 export interface PhotoDetailProps {
   id: string;
@@ -430,23 +430,23 @@ export default function PhotoDetail({ id, isJapanese }: PhotoDetailProps) {
         <div className="article-nav-row">
           <div className="nav-cell nav-cell-prev">
             {newer && (
-              <Link href={photoRoute(newer.id, isJapanese)} className="nav-link prev-link">
+              <AppLink href={photoRoute(newer.id, isJapanese)} className="nav-link prev-link">
                 ← {newer.caption || newer.alt || newer.id}
-              </Link>
+              </AppLink>
             )}
           </div>
 
           <div className="nav-cell nav-cell-middle">
-            <Link href={isJapanese ? "/photos/ja" : "/photos"} className="breadcrumb-link">
+            <AppLink href={isJapanese ? "/photos/ja" : "/photos"} className="breadcrumb-link">
               {text.back}
-            </Link>
+            </AppLink>
           </div>
 
           <div className="nav-cell nav-cell-next">
             {older && (
-              <Link href={photoRoute(older.id, isJapanese)} className="nav-link next-link">
+              <AppLink href={photoRoute(older.id, isJapanese)} className="nav-link next-link">
                 {older.caption || older.alt || older.id} →
-              </Link>
+              </AppLink>
             )}
           </div>
         </div>

@@ -1,5 +1,5 @@
-import { flowOf } from "../../Services/layout";
-import type { WidgetProps } from "../../Types";
+import { flowOf } from "../../Services/LayoutUtils";
+import type { WidgetProps } from "../../Types/TypeRegistry";
 
 /**
  * A widget that holds other widgets.

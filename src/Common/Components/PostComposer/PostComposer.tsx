@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
-import { createPost } from "../../../Services/api";
-import { useAuth } from "../../../Services/auth";
-import type { PostSummary } from "../../../Types";
+import { createPost } from "../../../Services/ContentApiService";
+import { useAuth } from "../../../Services/AuthProvider";
+import type { PostSummary } from "../../../Types/TypeRegistry";
 
 export interface PostComposerProps {
   isJapanese: boolean;
@@ -16,7 +16,7 @@ const TEXT = {
     signIn: "Sign in to post",
     bold: "Bold",
     italic: "Italic",
-    link: "Link",
+    link: "AppLink",
     remaining: (n: number) => `${n} left`,
   },
   ja: {

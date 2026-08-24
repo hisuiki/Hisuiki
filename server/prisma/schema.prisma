@@ -36,6 +36,7 @@ model User {
   likes        Like[]
   reposts      Repost[]
   profilePages ProfilePage[]
+  boards       Board[]
 
   @@map("user")
 }
@@ -130,9 +131,8 @@ model Profile {
   location    String?
   pronouns    String?
 
-  /// The visual layout editor's output: which blocks appear on the profile, in what order, and how
-  /// each is configured. JSON because it is a document read and written whole, and because its
-  /// shape is owned by the editor rather than by queries — nothing filters on it.
+  /// Legacy one-profile layout, retained so the board migration has a durable source. New writes go
+  /// to Board.layout; remove this after every deployed database has run the board migration.
   layout Json @default("{}")
 
   /// The "{name}'s profile" entry in the header. Users can remove it, hence the flag.
@@ -269,6 +269,40 @@ model ProfilePage {
 
   @@unique([userId, slug])
   @@map("profile_page")
+}
+
+/// A publishable experience made from widgets.
+///
+/// Boards are separate from Profile because one person may create many experiences. A primary
+/// board is the one shown at /users/{handle}; the others have their own slug beneath that profile.
+/// Layout remains JSON because it is an editor-owned document that is always read and written whole.
+model Board {
+  id      String @id
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  slug        String
+  title       String
+  description String @default("")
+  layout      Json   @default("{}")
+
+  isPrimary  Boolean  @default(false)
+  /// When set, this board supplies the widget layout for one standalone website page. Null for
+  /// ordinary user experiences. This is an optional override of the protected system board.
+  sitePage    String?  @unique
+  /// The canonical editable board for a website route. Exactly one is created for each supported
+  /// page when a site owner opens Admin; unlike an override, it cannot be unpublished or deleted.
+  systemPage  String?  @unique
+  publishedAt DateTime?
+  viewCount   Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ownerId, slug])
+  @@index([ownerId, isPrimary])
+  @@index([publishedAt, viewCount])
+  @@map("board")
 }
 
 /// Settings that belong to the site rather than to any one person. One row per key.

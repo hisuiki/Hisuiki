@@ -1,35 +1,51 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { WIDGETS, galleryKinds, newId } from "../../../Services/layout";
+import { WIDGETS, galleryKinds, newId } from "../../../Services/LayoutUtils";
 import WidgetIcon from "../WidgetIcon/WidgetIcon";
-import { fetchFeed } from "../../../Services/api";
-import { fetchProfile, fetchMyProfile } from "../../../Services/profile";
-import { usePageLayout } from "../../../Services/pageLayout";
-import { DRAG_TYPE } from "../../../Services/widgetDrag";
+import { fetchFeed } from "../../../Services/ContentApiService";
+import { fetchProfile, fetchMyProfile } from "../../../Services/ProfileService";
+import { usePageLayout } from "../../../Services/PageLayoutProvider";
+import { DRAG_TYPE } from "../../../Services/WidgetDragUtils";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
-import type { ProfileScope, Widget, WidgetGalleryProps, WidgetKind } from "../../../Types";
-import { ProfileScopeProvider, WIDGET_REGISTRY } from "../../../Widgets";
-import { galleryScope } from "../../../Widgets/demo";
+import type { ProfileScope, Widget, WidgetGalleryProps, WidgetKind } from "../../../Types/TypeRegistry";
+import { ProfileScopeProvider, WIDGET_REGISTRY } from "../../../Widgets/WidgetRegistry";
 
 const STORAGE_KEY = "hisuiki.gallery.open";
 
 type Props = Record<string, string | number | boolean>;
 
-/** Stand-in settings where a widget would otherwise be blank until configured. */
-function sample(kind: WidgetKind, t: (key: string) => string): Widget {
-  const props: Partial<Record<WidgetKind, Props>> = {
-    title: { action: "route", route: "home" },
-    text: { heading: t("text.sampleHeading"), body: t("text.sampleBody") },
-    webamp: { title: t("gallery.sample.track") },
-  };
-
+/** The widget exactly as it is created when added; gallery previews do not invent configuration. */
+function sample(kind: WidgetKind): Widget {
   return {
     id: `gallery-${newId()}`,
     kind,
     size: WIDGETS[kind].defaultSize,
-    props: props[kind] ?? {},
+    props: {} satisfies Props,
     children: WIDGETS[kind].container ? [] : undefined,
   };
+}
+
+/** Whether this gallery tile has real content worth rendering instead of its placeholder mark. */
+function hasPreviewData(kind: WidgetKind, scope: ProfileScope | null): boolean {
+  switch (kind) {
+    case "container":
+    case "spacer":
+    case "text":
+    case "webamp":
+      return false;
+    case "identity":
+      return scope !== null;
+    case "links":
+      return Boolean(scope?.profile.profileLinks.length);
+    case "bio":
+      return Boolean(scope?.readme?.renderedHtml);
+    case "heatmap":
+      return Boolean(scope && ((scope.activityDates?.length ?? 0) > 0 || scope.timeline.length > 0));
+    case "timeline":
+      return Boolean(scope?.timeline.length);
+    default:
+      return true;
+  }
 }
 
 /**
@@ -110,15 +126,13 @@ export default function WidgetGallery({ onAdd, embedded }: WidgetGalleryProps) {
         if (active && scope) setReal(scope);
       })
       .catch(() => {
-        // Not signed in, or no profile yet. The sample content stands.
+        // Not signed in, or no profile yet. Profile widgets retain their placeholders.
       });
 
     return () => {
       active = false;
     };
   }, [open]);
-
-  const scope = useMemo(() => galleryScope(real), [real]);
 
   const toggle = () => {
     const next = !open;
@@ -175,7 +189,7 @@ export default function WidgetGallery({ onAdd, embedded }: WidgetGalleryProps) {
             />
           </div>
 
-          <ProfileScopeProvider value={scope}>
+          <ProfileScopeProvider value={real}>
             {kinds.length === 0 ? (
               <p className="inspector-note">{t("gallery.noMatch")}</p>
             ) : (
@@ -188,6 +202,7 @@ export default function WidgetGallery({ onAdd, embedded }: WidgetGalleryProps) {
                   // corner of something teaches less than a symbol for the whole.
                   const need = WIDGETS[kind].minPreview;
                   const cramped = Boolean(need && tile && (tile.w < need.w || tile.h < need.h));
+                  const placeholder = cramped || !hasPreviewData(kind, real);
 
                   return (
                     <li
@@ -213,10 +228,10 @@ export default function WidgetGallery({ onAdd, embedded }: WidgetGalleryProps) {
                       <span className="widget-card-drag" aria-hidden="true" />
 
                       <div className="widget-card-preview" inert aria-hidden="true">
-                        {cramped ? (
+                        {placeholder ? (
                           <WidgetIcon kind={kind} />
                         ) : (
-                          <View widget={sample(kind, t)} editing={false} preview onChange={() => {}} />
+                          <View widget={sample(kind)} editing={false} preview onChange={() => {}} />
                         )}
                       </div>
 

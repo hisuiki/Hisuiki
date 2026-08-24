@@ -1,4 +1,4 @@
-import { useProfileScope } from "../context";
+import { useProfileScope } from "../ProfileScopeProvider";
 
 /**
  * The README post, shown as the bio.

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useExternalLink } from "../../../Services/externalLink";
+import { useExternalLink } from "../../../Services/ExternalLinkProvider";
 
 export interface ExternalLinkProps {
   href: string;

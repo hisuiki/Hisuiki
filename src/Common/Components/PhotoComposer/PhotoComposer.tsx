@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import InfoBubble from "../InfoBubble/InfoBubble";
-import { createPhoto, uploadMedia } from "../../../Services/photos";
-import { prepareVariants, type PreparedImage } from "../../../Services/imageResize";
-import type { PhotoPost } from "../../../Types";
+import { createPhoto, uploadMedia } from "../../../Services/PhotoService";
+import { prepareVariants, type PreparedImage } from "../../../Services/ImageResizeUtils";
+import type { PhotoPost } from "../../../Types/TypeRegistry";
 
 export interface PhotoComposerProps {
   isJapanese: boolean;

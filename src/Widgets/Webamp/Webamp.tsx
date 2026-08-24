@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { WidgetProps } from "../../Types";
+import type { WidgetProps } from "../../Types/TypeRegistry";
 
 /** One classic window. Winamp's are a fixed 275 by 116 and nothing about them reflows. */
 const WINDOW_WIDTH = 275;

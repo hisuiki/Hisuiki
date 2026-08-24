@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Skeleton from "../Skeleton/Skeleton";
 import PageEditor from "../PageEditor/PageEditor";
-import { Link } from "../../../Services/router";
-import { useAuth } from "../../../Services/auth";
-import { fetchArticles } from "../../../Services/api";
-import { articleRoute, postsFor } from "../../../Services/paths";
-import type { ArticleMetadata } from "../../../Types";
+import { AppLink } from "../../../Services/AppRouter";
+import { useAuth } from "../../../Services/AuthProvider";
+import { fetchArticles } from "../../../Services/ContentApiService";
+import { articleRoute, postsFor } from "../../../Services/PathUtils";
+import type { ArticleMetadata } from "../../../Types/TypeRegistry";
 
 export interface PostsIndexProps {
   isJapanese?: boolean;
@@ -86,7 +86,7 @@ export default function PostsIndex({ isJapanese = false }: PostsIndexProps) {
           {articles.map((art) => (
             <article className="posts-index-card" key={art.slug}>
               <h3 className="posts-card-title">
-                <Link href={articleRoute(art.slug)}>{art.title}</Link>
+                <AppLink href={articleRoute(art.slug)}>{art.title}</AppLink>
               </h3>
               {art.description && <p className="posts-card-desc">{art.description}</p>}
               <div className="posts-card-meta">

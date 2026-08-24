@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { AnchoredProps } from "../../../Types";
+import type { AnchoredProps } from "../../../Types/TypeRegistry";
 
 /** Clearance from the viewport edges. */
 const MARGIN = 8;

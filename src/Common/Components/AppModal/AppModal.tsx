@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useExternalLink, type PendingLink } from "../../../Services/externalLink";
+import { useExternalLink, type PendingLink } from "../../../Services/ExternalLinkProvider";
 
 // Keep in sync with app.scss's .app-modal.is-closing animation duration.
 const CLOSE_ANIMATION_MS = 180;

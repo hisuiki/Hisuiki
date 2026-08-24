@@ -1,5 +1,5 @@
 import ExternalLink from "../../Common/Components/ExternalLink/ExternalLink";
-import { useProfileScope } from "../context";
+import { useProfileScope } from "../ProfileScopeProvider";
 
 /** The links listed on this profile. */
 export default function Links() {

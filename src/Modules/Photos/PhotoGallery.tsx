@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import Skeleton from "../../Common/Components/Skeleton/Skeleton";
 import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
 import PhotoComposer from "../../Common/Components/PhotoComposer/PhotoComposer";
-import { Link } from "../../Services/router";
-import { useAuth } from "../../Services/auth";
-import { fetchPhotos, photoRoute } from "../../Services/photos";
-import type { PhotoPost } from "../../Types";
+import { AppLink } from "../../Services/AppRouter";
+import { useAuth } from "../../Services/AuthProvider";
+import { fetchPhotos, photoRoute } from "../../Services/PhotoService";
+import type { PhotoPost } from "../../Types/TypeRegistry";
 
 export interface PhotoGalleryProps {
   isJapanese: boolean;
@@ -102,7 +102,7 @@ export default function PhotoGallery({ isJapanese }: PhotoGalleryProps) {
       ) : (
         <div className="photo-grid">
           {posts.map((post) => (
-            <Link
+            <AppLink
               key={post.id}
               href={photoRoute(post.id, isJapanese)}
               className="photo-tile"
@@ -125,7 +125,7 @@ export default function PhotoGallery({ isJapanese }: PhotoGalleryProps) {
                   {post.commentCount}
                 </span>
               </span>
-            </Link>
+            </AppLink>
           ))}
         </div>
       )}

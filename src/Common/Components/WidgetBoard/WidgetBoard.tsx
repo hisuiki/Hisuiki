@@ -10,6 +10,7 @@ import {
   removeWidget,
   columnsOf,
   gapOf,
+  flowOf,
   findInTree,
   parentOf,
   scrollOf,
@@ -18,8 +19,8 @@ import {
   rowsOf,
   spanOf,
   wrapWidgets,
-} from "../../../Services/layout";
-import type { DropHint, GridMetrics, MenuItem, ResizePreview, Widget, WidgetBoardProps, WidgetKind } from "../../../Types";
+} from "../../../Services/LayoutUtils";
+import type { DropHint, GridMetrics, MenuItem, ResizePreview, Widget, WidgetBoardProps, WidgetKind } from "../../../Types/TypeRegistry";
 import {
   cellFromPoint,
   gridLines,
@@ -28,19 +29,17 @@ import {
   trackSize,
   trackStart,
   tracksForSize,
-} from "../../../Services/grid";
-import { styleOf, styleVariables } from "../../../Services/widgetStyle";
+} from "../../../Services/GridUtils";
+import { styleOf, styleVariables } from "../../../Services/WidgetStyleUtils";
 
-import { WIDGET_REGISTRY } from "../../../Widgets";
-import { usePageLayout } from "../../../Services/pageLayout";
-import { DRAG_TYPE, readWidgetDrag, type WidgetDrag } from "../../../Services/widgetDrag";
-import { useOverflow } from "../../Hooks/useOverflow";
-import { useFlip } from "../../Hooks/useFlip";
+import { WIDGET_REGISTRY } from "../../../Widgets/WidgetRegistry";
+import { usePageLayout } from "../../../Services/PageLayoutProvider";
+import { DRAG_TYPE, readWidgetDrag, type WidgetDrag } from "../../../Services/WidgetDragUtils";
+import { useFlip } from "../../Hooks/UseFlip";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 import EmptyBoard from "../EmptyBoard/EmptyBoard";
 import Glyph from "../WidgetIcon/Glyph";
 import ContextMenu from "../ContextMenu/ContextMenu";
-import OverflowWarning from "../OverflowWarning/OverflowWarning";
 
 /**
  * The board currently showing a drop hint.
@@ -171,7 +170,11 @@ export default function WidgetBoard({
 
   // Reordering already shows where a widget will land; animating every neighbour on top of that,
   // many times a second, is what made the board flicker while something was being moved.
-  const flipRef = useFlip(activeDraggingId === null && draggingGlobal === null);
+  // FLIP exists to show an editor where widgets move while arranging the board. On a published
+  // page, route transitions also change widget geometry; running FLIP there starts a second
+  // transform just after the Metro enter animation ends, which looks like the whole app rerenders
+  // and snaps sideways once more.
+  const flipRef = useFlip(editing && activeDraggingId === null && draggingGlobal === null);
 
   /** Stable, so the release listener below does not resubscribe on every list change. */
   const applySize = useCallback(
@@ -247,9 +250,6 @@ export default function WidgetBoard({
     node.style.width = `${Math.abs(box.x2 - box.x1)}px`;
     node.style.height = `${Math.abs(box.y2 - box.y1)}px`;
   };
-  // Only worth flagging where nothing can be done about it by scrolling.
-  const overflow = useOverflow(editing && scroll === "none");
-
   const update = (next: Widget[] | ((prev: Widget[]) => Widget[])) => onChange?.(next);
   const replace = (id: string, next: Widget) =>
     update(widgets.map((item) => (item.id === id ? next : item)));
@@ -766,11 +766,9 @@ export default function WidgetBoard({
           .join(" ")}
         ref={(node) => {
           boardRef.current = node;
-          overflow.ref(node);
         }}
         data-flow={flow}
         data-scroll={scroll}
-        data-overflow={overflow.overflowing === "none" ? undefined : overflow.overflowing}
         // The cell height a free board snaps to, so the CSS and the arithmetic cannot disagree.
         style={
           {
@@ -881,6 +879,7 @@ export default function WidgetBoard({
               {container && (
                 <WidgetBoard
                   widgets={widget.children ?? []}
+                  flow={flowOf(widget)}
                   scroll={scrollOf(widget)}
                   columns={columnsOf(widget)}
                   gap={gapOf(widget)}
@@ -928,6 +927,7 @@ export default function WidgetBoard({
               // What the server scopes this widget's own stylesheet to. Must match widgetScope() in
               // server/services/layoutCss.ts, or a widget's CSS lands on nothing.
               data-widget-id={widget.id}
+              data-anchor={typeof widget.props?.anchor === "string" ? widget.props.anchor : undefined}
               // Omitted at "none", so the rules that ask whether a widget has been given a border
               // or a shadow can actually tell.
               data-border={style.border === "none" ? undefined : style.border}
@@ -1051,7 +1051,7 @@ export default function WidgetBoard({
               {/* The corner you pull to resize. Pointer events rather than the drag machinery: a
                   drag would move the widget, and this has to change its size while it stays put.
                   Only where a size means something — a row or a column is measured by its contents. */}
-              {editing &&
+              {editing && flow === "grid" &&
                 ((spec.maxSpan ?? (columns ?? GRID_COLUMNS)) > (spec.minSpan ?? 1) ||
                   (spec.maxRows ?? 40) > (spec.minRows ?? 1)) && (
                 <span
@@ -1134,10 +1134,6 @@ export default function WidgetBoard({
           );
         })}
       </div>
-
-      {overflow.overflowing !== "none" && (
-        <OverflowWarning axis={overflow.overflowing} scrollable={scroll !== "none"} />
-      )}
 
       {menu !== null && (() => {
         const target = widgets.find((item) => item.id === menu.id);

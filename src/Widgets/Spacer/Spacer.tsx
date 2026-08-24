@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import type { WidgetProps } from "../../Types";
+import type { WidgetProps } from "../../Types/TypeRegistry";
 
 /**
  * Nothing, taking up room.

@@ -1,4 +1,4 @@
-import { Link } from "../../Services/router";
+import { AppLink } from "../../Services/AppRouter";
 
 export interface AboutProps {
   isJapanese: boolean;
@@ -14,16 +14,16 @@ export default function About({ isJapanese }: AboutProps) {
       <div className="about-page">
         <h1>Hisuikiとは</h1>
         <p className="about-lead">
-          Hisuikiはメディア共有とブログのプラットフォームです。写真を投稿し、記事を書き、
-          他の人が共有したものにコメントできます。
+          Hisuikiはボード体験を共有するプラットフォームです。画像、文章、メディア、
+          インタラクティブなウィジェットを自由に配置して、自分だけのページを作れます。
         </p>
         <p>
           アカウントごとに <code>{"{handle}"}.hisuiki.com</code> の専用スペースがあり、
-          ページも見た目も自分のものです。書いたものはマークダウンのファイルとして保存され、
-          いつでも取得でき、編集のたびにバージョンが残ります。
+          ページも見た目も自分のものです。複数のボードを作成・管理・公開でき、
+          プロフィールに表示するメインの体験も選べます。
         </p>
         <p className="about-cta">
-          <Link href="/ja">おすすめを見る</Link>
+          <AppLink href="/ja">おすすめを見る</AppLink>
         </p>
       </div>
     );
@@ -33,16 +33,16 @@ export default function About({ isJapanese }: AboutProps) {
     <div className="about-page">
       <h1>What Hisuiki is</h1>
       <p className="about-lead">
-        Hisuiki is a media sharing and blogging platform. Post photos, write articles, and comment on
-        what other people share.
+        Hisuiki is a platform for sharing board experiences. Arrange images, writing, media, and
+        interactive widgets into a page that feels like your own place.
       </p>
       <p>
         Every account gets its own space at <code>{"{handle}"}.hisuiki.com</code>, with its own pages
-        and its own look. Writing is stored as markdown files you can fetch and keep, and every edit
-        is versioned.
+        and its own look. Create and publish several boards, manage them in one place, and choose the
+        primary experience that becomes your profile.
       </p>
       <p className="about-cta">
-        <Link href="/">Go to For You</Link>
+        <AppLink href="/">Go to For You</AppLink>
       </p>
     </div>
   );

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { findUnfinished, type Unfinished } from "../../../Services/incomplete";
-import { usePageLayout } from "../../../Services/pageLayout";
-import { useRouter } from "../../../Services/router";
+import { findUnfinished, type Unfinished } from "../../../Services/WidgetValidationUtils";
+import { usePageLayout } from "../../../Services/PageLayoutProvider";
+import { useRouter } from "../../../Services/AppRouter";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 
 /** Asks before leaving a page with widgets on it that will render as nothing. */

@@ -28,7 +28,7 @@ Production runs **one image as two Cloud Run services**, split by hostname:
 | `api.hisuiki.com` | `hisuiki-api`  | `api`      | Express `/api`                |
 | `cdn.hisuiki.com` | —              | —          | the assets bucket, via Cloud CDN |
 
-`APP_ROLE` is read in `server/src/config.ts` and gates what `index.ts` mounts. It defaults to
+`APP_ROLE` is read in `server/src/AppConfig.ts` and gates what `Server.ts` mounts. It defaults to
 `combined`, which is what local development wants: one process, everything, same origin.
 
 The split is not free, and three things depend on getting it right:
@@ -58,6 +58,16 @@ server/src/routes/       Express route handlers
 server/src/services/     Storage, auth, identity, photos, Prisma, rate limiting
 server/prisma/           schema.prisma: better-auth's four tables
 ```
+
+## Code conventions and refactoring
+
+The enforceable naming, file-placement, type, utility, duplication and symbol-search rules are in
+[`docs/CODE_CONVENTIONS.md`](docs/CODE_CONVENTIONS.md). The staged migration of existing code is in
+[`docs/REFACTOR_PLAN.md`](docs/REFACTOR_PLAN.md).
+
+Before adding, moving or renaming a symbol, run `pnpm symbols <Name>` and use the TypeScript language
+service's Find All References/Rename Symbol operation. Follow it with text search for CSS selectors,
+translation keys, JSON, routes and other dynamic references.
 
 ## Commands
 
@@ -134,7 +144,7 @@ Commit and push only when asked.
 
 ## Theming: never hardcode a color
 
-The palette is derived at runtime. `src/Services/palette.ts` samples the current wallpaper for its
+The palette is derived at runtime. `src/Services/PaletteUtils.ts` samples the current wallpaper for its
 dominant hue and overall luminance, then rewrites the `--color-*` custom properties through one
 shared saturation/lightness ramp, checking every derived color against WCAG relative luminance and
 nudging it lighter until it clears the minimum ratio for its role. A wallpaper bright enough to
@@ -144,7 +154,7 @@ Consequences for any change that touches color:
 
 - Style against the `--color-*` tokens. A literal hex or `rgba()` in a rule will not follow the
   wallpaper, and will visibly disagree with the tokens around it on a non-default photo.
-- Every token needs a static fallback in the `:root` block of `src/Common/Theme/app.scss`. Palette
+- Every token needs a static fallback in the `:root` block of `src/Common/Theme/App.scss`. Palette
   sampling resolves to null on failure (404, CORS-tainted canvas), which deliberately leaves the
   static palette in place.
 - New tokens belong in `buildPaletteVars()` alongside the existing ones, built from the same
@@ -159,11 +169,11 @@ load-bearing for them. Respect `prefers-reduced-motion`.
 
 ## Photos
 
-`/photos` is a photo gallery with posting, likes, and comments, served by `server/src/routes/photos.ts`.
+`/photos` is a photo gallery with posting, likes, and comments, served by `server/src/routes/PhotoRoutes.ts`.
 
 Images live in the assets bucket next to everything else, under `photos/media/`. Each post stores
 two objects — a full-size image and a grid thumbnail — both produced **in the browser**
-(`src/Services/imageResize.ts`) before upload. That is why the API has no image library: it stores
+(`src/Services/ImageResizeUtils.ts`) before upload. That is why the API has no image library: it stores
 bytes the browser already decoded, resized, and re-encoded. Uploads are sent as the raw request
 body rather than multipart, so no parser dependency is needed either.
 
@@ -171,7 +181,7 @@ Metadata is JSON in the same bucket: `photos/index.json` is the ordered manifest
 `photos/social/<id>.json` holds one post's likes and comments. They are separate objects so that a
 like does not contend with an unrelated post's edit for the same generation. Every write is a
 compare-and-swap against the object's GCS generation and replays its mutation on a lost race
-(`server/src/services/photos.ts`).
+(`server/src/services/PhotoService.ts`).
 
 `services/photos.ts` is the only module that knows any of that. The routes speak in posts, likes,
 and comments, so when post metadata moves to Postgres behind Prisma, only that module changes.
@@ -179,7 +189,7 @@ and comments, so when post metadata moves to Postgres behind Prisma, only that m
 Authorization is deliberately shallow and the limits are what carry the weight: **any signed-in
 account may post**. A post or comment can only be changed by its author or by an address listed in
 `SITE_OWNER_EMAILS`, who moderates. Uploads are type- and size-capped, and posting, commenting, and
-liking are each quota'd per account per hour (`server/src/services/rateLimit.ts`). Those quotas are
+liking are each quota'd per account per hour (`server/src/services/RateLimitService.ts`). Those quotas are
 per instance, like every other in-process cache here.
 
 `GET /api/photos` accepts an `?author=` filter. Nothing calls it yet; it exists because profiles are
@@ -193,10 +203,10 @@ token, and `credentials: "include"` on a fetch is what carries identity.
 
 Two rules keep it contained:
 
-- **Read identity through `server/src/services/identity.ts`, never better-auth directly.** `getViewer`
+- **Read identity through `server/src/services/IdentityService.ts`, never better-auth directly.** `getViewer`
   returns the smallest shape the app needs, and `isSiteOwner` answers moderation. One import to
   change if the provider ever does.
-- **better-auth is mounted before `express.json()`** in `server/src/index.ts`. It parses its own
+- **better-auth is mounted before `express.json()`** in `server/src/Server.ts`. It parses its own
   bodies off the raw stream, and a JSON parser upstream of it consumes the request first, leaving
   the handler waiting on a stream that never emits.
 
@@ -210,7 +220,7 @@ Signed-in accounts edit markdown in `PageEditor` and it is written straight to t
 
 The commit message survived that change and is load-bearing. It is stored in the object's custom
 metadata alongside the author, and the page history reads it back: bucket versioning keeps every
-generation, `GET /api/pages/history` lists them, and `src/Services/history.ts` diffs one generation
+generation, `GET /api/pages/history` lists them, and `src/Services/HistoryService.ts` diffs one generation
 against the previous one in the browser. A save with no message would be a revision with no label,
 which is why the field is required.
 

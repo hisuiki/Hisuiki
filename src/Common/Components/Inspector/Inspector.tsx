@@ -3,15 +3,20 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   SCROLLS,
+  FLOWS,
   WIDGETS,
   isContainer,
   addWidget,
   columnsOf,
   gapOf,
+  flowOf,
+  inheritanceChoiceOf,
+  inheritanceInTree,
+  parentOf,
   rowsOf,
   scrollOf,
   spanOf,
-} from "../../../Services/layout";
+} from "../../../Services/LayoutUtils";
 import {
   BORDERS,
   DEFAULT_STYLE,
@@ -21,14 +26,13 @@ import {
   PALETTE,
   SHADOWS,
   styleOf,
-} from "../../../Services/widgetStyle";
-import { ROUTE_KEYS, titleAction } from "../../../Services/titleWidget";
-import { usePageLayout } from "../../../Services/pageLayout";
-import type { InspectorProps } from "../../../Types";
-import SiteDefaults from "../SiteDefaults/SiteDefaults";
+} from "../../../Services/WidgetStyleUtils";
+import { ROUTE_KEYS, titleAction } from "../../../Services/TitleWidgetUtils";
+import { usePageLayout } from "../../../Services/PageLayoutProvider";
+import type { InspectorProps } from "../../../Types/TypeRegistry";
 import WidgetGallery from "../WidgetGallery/WidgetGallery";
 import Glyph from "../WidgetIcon/Glyph";
-import { Check, Field, Group, Note, Select, Slider, TextField } from "./fields";
+import { Check, Field, Group, Note, Select, Slider, TextField } from "./InspectorFields";
 
 const MODE_KEY = "hisuiki.inspector.mode";
 const WIDTH_KEY = "hisuiki.inspector.width";
@@ -53,15 +57,17 @@ export default function Inspector({
   onClose,
 }: InspectorProps) {
   const { t } = useTranslation();
-  const { root } = usePageLayout();
+  const { root, board } = usePageLayout();
 
   const isRoot = widget.id === root.id;
   const style = styleOf(widget);
   const container = isContainer(widget) || isRoot;
   const action = titleAction(widget);
-  const hasGeneral = widget.kind === "title" || widget.kind === "webamp";
+  const hasGeneral = widget.kind === "title" || widget.kind === "webamp" || widget.kind === "boards";
   const spec = WIDGETS[widget.kind];
-  const hasSizeControls = !isRoot && (
+  const parent = isRoot ? null : (parentOf(root, widget.id) ?? root);
+  const parentFlow = parent ? flowOf(parent) : "grid";
+  const hasSizeControls = !isRoot && parentFlow === "grid" && (
     (spec?.maxSpan ?? 12) > (spec?.minSpan ?? 1) ||
     (spec?.maxRows ?? 20) > (spec?.minRows ?? 1)
   );
@@ -189,6 +195,13 @@ export default function Inspector({
   const setProp = (key: string, value: string | number | boolean) =>
     onChange({ ...widget, props: { ...widget.props, [key]: value } });
 
+  const setInheritance = (value: "inherit" | "site" | "page") => {
+    const props = { ...widget.props };
+    if (value === "inherit") delete props.inheritance;
+    else props.inheritance = value;
+    onChange({ ...widget, props });
+  };
+
   const setStyle = (patch: Partial<typeof style>) =>
     onChange({ ...widget, style: { ...widget.style, ...patch } });
 
@@ -271,6 +284,53 @@ export default function Inspector({
           />
         </>
       )}
+
+      {widget.kind === "boards" && (
+        <>
+          <Select
+            label={t("boardsWidget.feed")}
+            value={String(widget.props?.feed ?? "home")}
+            options={(["home", "explore"] as const).map((value) => ({
+              value,
+              label: t(`boardsWidget.feeds.${value}`),
+            }))}
+            onChange={(value) => setProp("feed", value)}
+          />
+          <Select
+            label={t("boardsWidget.sort")}
+            value={String(widget.props?.sort ?? "trending")}
+            options={(["trending", "recent", "random"] as const).map((value) => ({
+              value,
+              label: t(`boardsWidget.sorts.${value}`),
+            }))}
+            onChange={(value) => setProp("sort", value)}
+          />
+          <Slider
+            label={t("boardsWidget.limit")}
+            value={Number(widget.props?.limit ?? 12)}
+            min={1}
+            max={50}
+            step={1}
+            display={String(widget.props?.limit ?? 12)}
+            onChange={(value) => setProp("limit", value)}
+          />
+          <TextField
+            label={t("boardsWidget.heading")}
+            value={String(widget.props?.heading ?? "")}
+            onChange={(value) => setProp("heading", value)}
+          />
+          <Check
+            label={t("boardsWidget.showHeading")}
+            checked={widget.props?.showHeading !== false}
+            onChange={(value) => setProp("showHeading", value)}
+          />
+          <Check
+            label={t("boardsWidget.showControls")}
+            checked={widget.props?.showControls === true}
+            onChange={(value) => setProp("showControls", value)}
+          />
+        </>
+      )}
     </>
   );
 
@@ -305,15 +365,24 @@ export default function Inspector({
 
       {container && (
         <>
-          <Slider
-            label={t("layout.columns")}
-            value={columnsOf(widget)}
-            min={1}
-            max={12}
-            step={1}
-            display={String(columnsOf(widget))}
-            onChange={(columns) => setProp("columns", columns)}
+          <Select
+            label={t("layout.flow")}
+            value={flowOf(widget)}
+            options={FLOWS.map((value) => ({ value, label: t(`flows.${value}`) }))}
+            onChange={(value) => setProp("flow", value)}
           />
+
+          {flowOf(widget) === "grid" && (
+            <Slider
+              label={t("layout.columns")}
+              value={columnsOf(widget)}
+              min={1}
+              max={12}
+              step={1}
+              display={String(columnsOf(widget))}
+              onChange={(columns) => setProp("columns", columns)}
+            />
+          )}
 
           <Slider
             label={t("layout.gap")}
@@ -331,6 +400,7 @@ export default function Inspector({
             options={SCROLLS.map((value) => ({ value, label: t(`inspector.scrolls.${value}`) }))}
             onChange={(value) => setProp("scroll", value)}
           />
+          <Note>{t("inspector.scrollBehavior")}</Note>
           {scrollOf(widget) !== "none" && <Note>{t("inspector.scrollNote")}</Note>}
         </>
       )}
@@ -346,6 +416,31 @@ export default function Inspector({
 
   const customize = () => (
     <>
+      {board?.systemPage && !isRoot && (
+        <>
+          <Select
+            label={t("inspector.inheritance")}
+            value={inheritanceChoiceOf(widget)}
+            options={(["inherit", "site", "page"] as const).map((value) => ({
+              value,
+              label: t(`inspector.inheritances.${value}`),
+            }))}
+            onChange={setInheritance}
+          />
+          <Note>
+            {t(
+              inheritanceChoiceOf(widget) === "inherit"
+                ? inheritanceInTree(root, widget.id) === "site"
+                  ? "inspector.inheritanceInheritedSite"
+                  : "inspector.inheritanceInheritedPage"
+                : inheritanceChoiceOf(widget) === "site"
+                  ? "inspector.inheritanceSiteNote"
+                  : "inspector.inheritancePageNote",
+            )}
+          </Note>
+        </>
+      )}
+
       <Slider
         label={t("inspector.blur")}
         value={style.blur ?? 0}
@@ -449,7 +544,6 @@ export default function Inspector({
       </Field>
       <Note>{t("inspector.cssNote")}</Note>
 
-      {isRoot && <SiteDefaults />}
     </>
   );
 

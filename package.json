@@ -1,7 +1,7 @@
 {
   "name": "hisuiki-web",
   "version": "2.1",
-  "description": "Hisuiki — personal site and blog",
+  "description": "Hisuiki — board experience sharing platform",
   "repository": "https://github.com/powerm1nt/Hisuiki",
   "homepage": "https://hisuiki.com",
   "private": true,
@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "e2e": "node scripts/e2e.mjs"
+    "symbols": "node scripts/SearchSymbols.mjs",
+    "e2e": "node scripts/EndToEnd.mjs"
   },
   "dependencies": {
     "@mdx-js/mdx": "^3.1.1",
