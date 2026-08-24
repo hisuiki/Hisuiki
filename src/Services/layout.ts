@@ -88,6 +88,10 @@ interface WidgetSpec {
    * icon instead — a cropped corner of a widget teaches less than a symbol for it.
    */
   minPreview?: { w: number; h: number };
+  minSpan?: number;
+  maxSpan?: number;
+  minRows?: number;
+  maxRows?: number;
 }
 
 export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
@@ -107,7 +111,7 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     description: {
       en: "Whatever the current page shows — the feed, a profile, settings.",
       ja: "現在のページの内容（フィード、プロフィール、設定など）。",
-  },
+    },
     minPreview: { w: 240, h: 140 },
     confirmRemove: true,
     defaultSize: "large",
@@ -128,7 +132,11 @@ export const WIDGETS: Record<WidgetKind, WidgetSpec> = {
     description: { en: "Your avatar, and the menu behind it.", ja: "アバターとメニュー。" },
     confirmRemove: true,
     defaultSize: "small",
-    sizes: ["small", "medium", "large"],
+    sizes: ["small"],
+    minSpan: 1,
+    maxSpan: 1,
+    minRows: 1,
+    maxRows: 1,
   },
   brand: {
     label: { en: "Brand", ja: "ブランド" },
@@ -256,9 +264,12 @@ export const columnsOf = (item: Widget): number => {
  * this existed.
  */
 export function spanOf(item: Widget, columns: number): number {
+  const spec = WIDGETS[item.kind];
+  const min = spec?.minSpan ?? 1;
+  const max = spec?.maxSpan ?? columns;
   const stored = item.props?.span;
   const raw = typeof stored === "number" && Number.isFinite(stored) ? Math.round(stored) : SIZE_SPAN[item.size];
-  return Math.min(columns, Math.max(1, raw));
+  return Math.min(Math.min(columns, max), Math.max(min, raw));
 }
 
 /**
@@ -290,9 +301,12 @@ export const ROW_HEIGHT = 72;
  * Content taller than its rows still grows rather than being cut off.
  */
 export function rowsOf(item: Widget): number {
+  const spec = WIDGETS[item.kind];
+  const min = spec?.minRows ?? 1;
+  const max = spec?.maxRows ?? 40;
   const stored = item.props?.rows;
   const raw = typeof stored === "number" && Number.isFinite(stored) ? Math.round(stored) : 1;
-  return Math.min(40, Math.max(1, raw));
+  return Math.min(max, Math.max(min, raw));
 }
 
 /**
@@ -795,16 +809,35 @@ export const removeFromTree = (root: Widget, id: string): Widget => {
   return found ? asRoot(root, found.remaining) : root;
 };
 
-export function moveIntoContainer(root: Widget, id: string, containerId: string): Widget {
+export function moveIntoContainer(
+  root: Widget,
+  id: string,
+  containerId: string,
+  targetCell?: { col?: number; row?: number },
+): Widget {
   if (id === containerId || id === root.id) return root;
 
   const found = extractWidget(root.children ?? [], id);
   if (!found) return root;
 
-  // The root is a container too, so dropping onto it appends rather than nesting.
-  if (containerId === root.id) return asRoot(root, [...found.remaining, found.widget]);
+  const nextProps = { ...(found.widget.props ?? {}) };
+  if (targetCell && targetCell.col !== undefined && targetCell.row !== undefined) {
+    nextProps.col = targetCell.col;
+    nextProps.row = targetCell.row;
+  } else {
+    delete nextProps.col;
+    delete nextProps.row;
+  }
 
-  const inserted = insertIntoContainer(found.remaining, containerId, found.widget);
+  const widgetToMove: Widget = {
+    ...found.widget,
+    props: nextProps,
+  };
+
+  // The root is a container too, so dropping onto it appends rather than nesting.
+  if (containerId === root.id) return asRoot(root, [...found.remaining, widgetToMove]);
+
+  const inserted = insertIntoContainer(found.remaining, containerId, widgetToMove);
   return inserted.inserted ? asRoot(root, inserted.widgets) : root;
 }
 
@@ -846,6 +879,22 @@ export function treeHasChild(root: Widget, containerId: string, childId: string)
           : false,
     );
 
+  return search(root.children ?? []);
+}
+
+/** Finds a widget by id anywhere in the tree, including the root itself. */
+export function findInTree(root: Widget, id: string): Widget | null {
+  if (root.id === id) return root;
+  const search = (widgets: Widget[]): Widget | null => {
+    for (const item of widgets) {
+      if (item.id === id) return item;
+      if (item.children && item.children.length > 0) {
+        const found = search(item.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
   return search(root.children ?? []);
 }
 
@@ -954,7 +1003,12 @@ export function wrapWidgets(widgets: Widget[], ids: Set<string>, flow: Flow): Wi
   const container = make("container", {
     size: "large",
     props: { flow },
-    children: chosen,
+    children: chosen.map((w) => {
+      const p = { ...(w.props ?? {}) };
+      delete p.col;
+      delete p.row;
+      return { ...w, props: p };
+    }),
   });
 
   return [...rest.slice(0, at), container, ...rest.slice(at)];

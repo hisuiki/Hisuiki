@@ -10,6 +10,7 @@ import {
   removeWidget,
   columnsOf,
   gapOf,
+  findInTree,
   parentOf,
   scrollOf,
   cellOf,
@@ -18,7 +19,7 @@ import {
   spanOf,
   wrapWidgets,
 } from "../../../Services/layout";
-import type { GridMetrics, MenuItem, ResizePreview, Widget, WidgetBoardProps } from "../../../Types";
+import type { DropHint, GridMetrics, MenuItem, ResizePreview, Widget, WidgetBoardProps, WidgetKind } from "../../../Types";
 import {
   cellFromPoint,
   gridLines,
@@ -32,7 +33,7 @@ import { styleOf, styleVariables } from "../../../Services/widgetStyle";
 
 import { WIDGET_REGISTRY } from "../../../Widgets";
 import { usePageLayout } from "../../../Services/pageLayout";
-import { DRAG_TYPE, readWidgetDrag } from "../../../Services/widgetDrag";
+import { DRAG_TYPE, readWidgetDrag, type WidgetDrag } from "../../../Services/widgetDrag";
 import { useOverflow } from "../../Hooks/useOverflow";
 import { useFlip } from "../../Hooks/useFlip";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
@@ -40,7 +41,14 @@ import EmptyBoard from "../EmptyBoard/EmptyBoard";
 import Glyph from "../WidgetIcon/Glyph";
 import ContextMenu from "../ContextMenu/ContextMenu";
 import OverflowWarning from "../OverflowWarning/OverflowWarning";
-import WidgetInspector from "../Inspector/WidgetInspector";
+
+/**
+ * The board currently showing a drop hint.
+ *
+ * Moving the pointer into a nested board does not leave the board around it, so the outer one is
+ * never told to stop — without a single owner both drew a footprint at once.
+ */
+let hintOwner: HTMLDivElement | null = null;
 
 /**
  * One widget's view, memoised.
@@ -72,6 +80,35 @@ const WidgetSlot = memo(function WidgetSlot({
 });
 
 /**
+ * The way out of a container, along all four of its edges.
+ *
+ * Laid over the container rather than made of padding: opening real space moved every widget on the
+ * page the moment a drag began, so what you aimed at was never where you grabbed it.
+ */
+function EscapeEdges({
+  onEdgeOver,
+  onEdgeDrop,
+}: {
+  onEdgeOver: (e: React.DragEvent) => void;
+  onEdgeDrop: (e: React.DragEvent) => void;
+}) {
+  return (
+    <>
+      {(["top", "right", "bottom", "left"] as const).map((edge) => (
+        <span
+          key={edge}
+          className="widget-escape-edge"
+          data-edge={edge}
+          aria-hidden="true"
+          onDragOver={onEdgeOver}
+          onDrop={onEdgeDrop}
+        />
+      ))}
+    </>
+  );
+}
+
+/**
  * The surface widgets sit on.
  *
  * It handles the five things every board shares, whatever anchor it lives at: selection, reordering,
@@ -94,21 +131,15 @@ export default function WidgetBoard({
   const [dragging, setDragging] = useState<string | null>(null);
   const draggedNode = useRef<HTMLElement | null>(null);
   const reorderFrame = useRef(0);
+  const hintFrame = useRef(0);
   const [pendingRemoval, setPendingRemoval] = useState<Widget | null>(null);
-  // Which widget's Inspector is open, and the element it hangs from. One at a time: two panels for
-  // two widgets would leave no way to tell which one you were changing.
-  const [inspecting, setInspecting] = useState<string | null>(null);
-  const inspectorAnchor = useRef<HTMLElement | null>(null);
-
-  /** Opening the Inspector also fixes what it hangs from, which is a thing to do from an event. */
-  const inspect = (id: string | null) => {
-    inspectorAnchor.current = id ? flipRef.element(id) : null;
-    setInspecting(id);
-  };
   // The footprint a corner drag is aiming at. The widget itself is left alone until the corner is
   // released: resizing it live reflowed the rows under the gesture, which is what made the preview
   // drift away from the cells it was supposed to be showing.
   const [preview, setPreview] = useState<ResizePreview | null>(null);
+  // Where a widget carried in from another board would land. Drawn by writing to its own element,
+  // so a drag costs one DOM write per frame rather than a render of the board.
+  const hintEl = useRef<HTMLDivElement | null>(null);
   // Measured once, when the gesture starts, so the whole drag reads the same grid.
   const resizeGeom = useRef<{ metrics: GridMetrics; col: number; row: number; total: number } | null>(null);
   // Where inside the widget it was picked up, so a drop puts its corner where the widget was held
@@ -122,6 +153,8 @@ export default function WidgetBoard({
     finalizePreview,
     moveWidgetToContainer,
     insertPreview,
+    inspectingId,
+    inspect,
     root,
   } = usePageLayout();
   const activeDraggingId =
@@ -129,6 +162,12 @@ export default function WidgetBoard({
     (draggingGlobal?.id && widgets.some((w) => w.id === draggingGlobal.id)
       ? draggingGlobal.id
       : null);
+
+  const arranging = editing && draggingGlobal !== null;
+  // A container cannot be dropped inside itself. Without this a board nested in the widget being
+  // carried still offered itself, and the move was refused only once it had been attempted.
+  const dragged = draggingGlobal?.id ? findInTree(root, draggingGlobal.id) : null;
+  const refusesDrop = dragged !== null && findInTree(dragged, containerId ?? root.id) !== null;
 
   // Reordering already shows where a widget will land; animating every neighbour on top of that,
   // many times a second, is what made the board flicker while something was being moved.
@@ -290,6 +329,160 @@ export default function WidgetBoard({
     replace(item.id, { ...item, props: { ...item.props, col: cell.col, row: cell.row } });
   };
 
+  /**
+   * Where a widget dropped at (clientX, clientY) would land on this board.
+   *
+   * The cell under the pointer when it is free, and otherwise the nearest one that is: refusing the
+   * drop outright is what made a widget dragged out of a container land at the end of the page
+   * instead of where it was let go.
+   */
+  const dropPlan = useCallback(
+    (clientX: number, clientY: number, widgetId: string, widgetKind?: WidgetKind) => {
+      const board = boardRef.current;
+      if (!board) return null;
+
+      const metrics = gridMetrics(board);
+      const total = Math.max(1, metrics.columns.length);
+      // The offset travels with the drag: a board the widget was not picked up on has no grab of
+      // its own, and its last one belongs to an earlier gesture.
+      const grab = draggingGlobal?.grab ?? grabOffset.current ?? { x: 0, y: 0 };
+      const item = findInTree(root, widgetId) ?? makeWidget(widgetKind ?? "spacer", { id: widgetId });
+      const span = spanOf(item, total);
+      const rows = rowsOf(item);
+      const wanted = cellFromPoint(metrics, clientX - grab.x, clientY - grab.y, span);
+
+      const fits = (col: number, row: number) =>
+        col >= 1 && row >= 1 && col + span - 1 <= total && isFree(widgets, widgetId, { col, row, span, rows }, total);
+
+      let cell: { col: number; row: number } | null = fits(wanted.col, wanted.row) ? wanted : null;
+      for (let ring = 1; cell === null && ring <= 8; ring += 1) {
+        for (let dr = -ring; cell === null && dr <= ring; dr += 1) {
+          for (let dc = -ring; dc <= ring; dc += 1) {
+            if (Math.max(Math.abs(dr), Math.abs(dc)) !== ring) continue;
+            if (!fits(wanted.col + dc, wanted.row + dr)) continue;
+            cell = { col: wanted.col + dc, row: wanted.row + dr };
+            break;
+          }
+        }
+      }
+
+      return cell === null ? null : { cell, span, rows, metrics };
+    },
+    [root, widgets, draggingGlobal],
+  );
+
+  const drawHint = useCallback((rect: DropHint | null) => {
+    const node = hintEl.current;
+    if (!node) return;
+
+    if (rect === null) {
+      node.style.display = "none";
+      if (hintOwner === node) hintOwner = null;
+      return;
+    }
+
+    if (hintOwner && hintOwner !== node) hintOwner.style.display = "none";
+    hintOwner = node;
+    node.style.display = "block";
+    node.style.left = `${rect.left}px`;
+    node.style.top = `${rect.top}px`;
+    node.style.width = `${rect.width}px`;
+    node.style.height = `${rect.height}px`;
+  }, []);
+
+  // Whatever ended the drag — a drop elsewhere, escape, a cancel — the footprint goes with it.
+  useEffect(() => {
+    if (draggingGlobal === null) drawHint(null);
+  }, [draggingGlobal, drawHint]);
+
+  /** Draws the footprint an incoming widget would take, without touching the layout. */
+  const hintDrop = useCallback(
+    (clientX: number, clientY: number, widgetId: string, widgetKind?: WidgetKind) => {
+      // dragover fires far faster than the grid needs re-measuring.
+      if (hintFrame.current) return;
+      hintFrame.current = window.requestAnimationFrame(() => {
+        hintFrame.current = 0;
+      });
+
+      const plan = dropPlan(clientX, clientY, widgetId, widgetKind);
+      if (!plan) return;
+
+      const { cell, span, rows, metrics } = plan;
+      drawHint({
+        left: trackStart(metrics.columns, metrics.columnGap, cell.col - 1, 0),
+        top: trackStart(metrics.rows, metrics.rowGap, cell.row - 1, ROW_HEIGHT),
+        width: trackSize(metrics.columns, metrics.columnGap, cell.col - 1, span, 0),
+        height: trackSize(metrics.rows, metrics.rowGap, cell.row - 1, rows, ROW_HEIGHT),
+      });
+    },
+    [dropPlan, drawHint],
+  );
+
+  /**
+   * Takes a widget dropped on this board, from wherever in the tree it was carried.
+   *
+   * The board, a widget on it and a container's escape edge all land here, so they cannot disagree
+   * about where the thing goes.
+   */
+  const acceptDrop = useCallback(
+    (e: React.DragEvent) => {
+      const payload = readWidgetDrag(e.dataTransfer);
+      if (!payload) return;
+
+      if (payload.source === "gallery" || (!payload.id && payload.kind)) {
+        const kind = payload.kind;
+        if (kind && !payload.id) onChange?.((prev) => [...prev, makeWidget(kind)]);
+        finalizePreview();
+        announceDrag(null);
+        return;
+      }
+      if (!payload.id) return;
+
+      const isLocal = activeDraggingId !== null && widgets.some((w) => w.id === payload.id);
+      if (!isLocal) {
+        const plan = dropPlan(e.clientX, e.clientY, payload.id, payload.kind);
+        moveWidgetToContainer(payload.id, containerId ?? root.id, plan?.cell);
+      }
+
+      draggedNode.current = null;
+      setDragging(null);
+      drawHint(null);
+      finalizePreview();
+      announceDrag(null);
+    },
+    [
+      onChange,
+      activeDraggingId,
+      widgets,
+      dropPlan,
+      moveWidgetToContainer,
+      containerId,
+      root.id,
+      drawHint,
+      finalizePreview,
+      announceDrag,
+    ],
+  );
+
+  const onEdgeOver = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = "move";
+      if (draggingGlobal?.id) hintDrop(e.clientX, e.clientY, draggingGlobal.id, draggingGlobal.kind);
+    },
+    [draggingGlobal, hintDrop],
+  );
+
+  const onEdgeDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      acceptDrop(e);
+    },
+    [acceptDrop],
+  );
+
   /** The footprint of `span` × `rows` cells, from where the gesture started. */
   const previewOf = (id: string, span: number, rows: number): ResizePreview | null => {
     const geom = resizeGeom.current;
@@ -316,9 +509,18 @@ export default function WidgetBoard({
     wanted: { span: number; rows: number },
     total: number,
   ) => {
-    let { span, rows } = wanted;
-    while (span > 1 && !isFree(widgets, id, { col, row, span, rows }, total)) span -= 1;
-    while (rows > 1 && !isFree(widgets, id, { col, row, span, rows }, total)) rows -= 1;
+    const item = widgets.find((w) => w.id === id);
+    const spec = item ? WIDGETS[item.kind] : undefined;
+    const minSpan = spec?.minSpan ?? 1;
+    const maxSpan = spec?.maxSpan ?? total;
+    const minRows = spec?.minRows ?? 1;
+    const maxRows = spec?.maxRows ?? 40;
+
+    let span = Math.min(maxSpan, Math.max(minSpan, wanted.span));
+    let rows = Math.min(maxRows, Math.max(minRows, wanted.rows));
+
+    while (span > minSpan && !isFree(widgets, id, { col, row, span, rows }, total)) span -= 1;
+    while (rows > minRows && !isFree(widgets, id, { col, row, span, rows }, total)) rows -= 1;
     return { span, rows };
   };
 
@@ -361,7 +563,7 @@ export default function WidgetBoard({
     (event: React.PointerEvent<HTMLDivElement> | PointerEvent) => {
       if (!editing || event.button !== 0) return;
       const target = event.target as HTMLElement | null;
-      if (target?.closest?.(".widget")) return;
+      if (target?.closest?.(".widget") || target?.closest?.(".context-menu") || target?.closest?.(".inspector")) return;
 
       try {
         if (event.currentTarget && "setPointerCapture" in event.currentTarget) {
@@ -460,14 +662,42 @@ export default function WidgetBoard({
       }
     };
 
+    // The wrapper's own margins only. Anything inside the board — a nested container above all —
+    // belongs to whichever board it is over, and this listener runs before React's, so claiming the
+    // whole subtree here sent every drop to the page.
+    const onParentDragOver = (e: DragEvent) => {
+      if (!editing || draggingGlobal === null || e.target !== parent) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    };
+
+    const onParentDrop = (e: DragEvent) => {
+      if (!editing || draggingGlobal === null || e.target !== parent) return;
+      if (!e.dataTransfer) return;
+      e.preventDefault();
+      const payload = readWidgetDrag(e.dataTransfer);
+      if (payload?.id) {
+        moveWidgetToContainer(payload.id, root.id, dropPlan(e.clientX, e.clientY, payload.id, payload.kind)?.cell);
+        draggedNode.current = null;
+        setDragging(null);
+        drawHint(null);
+        finalizePreview();
+        announceDrag(null);
+      }
+    };
+
     parent.addEventListener("pointerdown", onParentPointerDown);
     parent.addEventListener("contextmenu", onParentContextMenu);
+    parent.addEventListener("dragover", onParentDragOver);
+    parent.addEventListener("drop", onParentDrop);
 
     return () => {
       parent.removeEventListener("pointerdown", onParentPointerDown);
       parent.removeEventListener("contextmenu", onParentContextMenu);
+      parent.removeEventListener("dragover", onParentDragOver);
+      parent.removeEventListener("drop", onParentDrop);
     };
-  }, [editing, containerId, root.id, startLasso]);
+  }, [editing, containerId, root.id, startLasso, draggingGlobal, finalizePreview, announceDrag, moveWidgetToContainer, dropPlan, drawHint]);
 
   /** What the right-click menu offers for a widget, and for a selection it happens to be part of. */
   const menuItems = (item: Widget): MenuItem[] => {
@@ -477,7 +707,7 @@ export default function WidgetBoard({
     return [
       {
         label: t("menu.inspect"),
-        onSelect: () => inspect(item.id),
+        onSelect: () => inspect(item.id, flipRef.element(item.id)),
       },
       {
         label: t("menu.duplicate"),
@@ -491,7 +721,10 @@ export default function WidgetBoard({
               label: t("menu.moveOut"),
               onSelect: () => {
                 const grandparent = parentOf(root, containerId);
-                moveWidgetToContainer(item.id, grandparent?.id ?? root.id);
+                const target = grandparent?.id ?? root.id;
+                for (const id of group) {
+                  moveWidgetToContainer(id, target);
+                }
                 setSelected(new Set());
               },
             },
@@ -527,6 +760,7 @@ export default function WidgetBoard({
           "widget-board",
           editing ? "is-editing" : "",
           preview !== null ? "is-snapping" : "",
+          arranging ? "is-arranging" : "",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -558,48 +792,38 @@ export default function WidgetBoard({
         }}
         onDragOver={(e) => {
           if (!editing || draggingGlobal === null) return;
-          if (containerId && draggingGlobal.id === containerId) return;
+          if (refusesDrop) return;
 
           e.preventDefault();
           if (containerId) e.stopPropagation();
-          e.dataTransfer.dropEffect = draggingGlobal.kind ? "copy" : "move";
+          e.dataTransfer.dropEffect = draggingGlobal.kind && !draggingGlobal.id ? "copy" : "move";
 
-          if (containerId && draggingGlobal.kind && draggingGlobal.id) {
+          if (
+            draggingGlobal.source === "gallery" &&
+            containerId &&
+            draggingGlobal.kind &&
+            draggingGlobal.id &&
+            !widgets.some((w) => w.id === draggingGlobal.id)
+          ) {
             insertPreview(draggingGlobal.id, draggingGlobal.kind, containerId);
           } else if (activeDraggingId !== null) {
             placeUnder(e);
+          } else if (draggingGlobal.id) {
+            hintDrop(e.clientX, e.clientY, draggingGlobal.id, draggingGlobal.kind);
           }
+        }}
+        onDragLeave={(e) => {
+          const next = e.relatedTarget as Node | null;
+          if (next && e.currentTarget.contains(next)) return;
+          drawHint(null);
         }}
         onDrop={(e) => {
           if (!editing || draggingGlobal === null) return;
-          if (containerId && draggingGlobal.id === containerId) return;
+          if (refusesDrop) return;
 
           e.preventDefault();
           if (containerId) e.stopPropagation();
-
-          const payload = readWidgetDrag(e.dataTransfer);
-          if (!payload) return;
-
-          if (payload.kind && payload.id) {
-            finalizePreview();
-            return;
-          }
-
-          if (payload.kind) {
-            const created = makeWidget(payload.kind);
-            update((prev) => [...prev, created]);
-            finalizePreview();
-            return;
-          }
-
-          if (payload.id && containerId) {
-            moveWidgetToContainer(payload.id, containerId);
-          } else if (activeDraggingId !== null) {
-            draggedNode.current = null;
-            setDragging(null);
-            finalizePreview();
-            announceDrag(null);
-          }
+          acceptDrop(e);
         }}
       >
 
@@ -635,12 +859,22 @@ export default function WidgetBoard({
           </div>
         )}
 
+        {editing && <div className="drop-hint" aria-hidden="true" ref={hintEl} style={{ display: "none" }} />}
+
         {editing && widgets.length === 0 && <EmptyBoard />}
 
         {widgets.map((widget) => {
           const spec = WIDGETS[widget.kind];
           const container = isContainer(widget);
           const style = styleOf(widget);
+          // A container holding what is being carried opens a margin around its board: dropping on
+          // that ring lands the widget here, one level out, however deeply it was nested.
+          const escaping =
+            arranging &&
+            container &&
+            draggingGlobal?.id != null &&
+            draggingGlobal.id !== widget.id &&
+            findInTree(widget, draggingGlobal.id) !== null;
 
           const content = (
             <WidgetSlot widget={widget} editing={editing} replace={replaceById}>
@@ -667,6 +901,7 @@ export default function WidgetBoard({
                 "widget",
                 activeDraggingId === widget.id ? "is-dragging" : "",
                 selected.has(widget.id) ? "is-selected" : "",
+                escaping ? "is-escape" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -686,6 +921,8 @@ export default function WidgetBoard({
                 ...styleVariables(style),
               }}
               data-widget={widget.kind}
+              data-span={spanOf(widget, columns ?? GRID_COLUMNS)}
+              data-rows={rowsOf(widget)}
               // Which slot it sits in, so the stylesheet can hold the page to a reading width
               // without the slot's own background stopping at the same edge.
               // What the server scopes this widget's own stylesheet to. Must match widgetScope() in
@@ -695,7 +932,7 @@ export default function WidgetBoard({
               // or a shadow can actually tell.
               data-border={style.border === "none" ? undefined : style.border}
               data-shadow={style.shadow === "none" ? undefined : style.shadow}
-              data-inspecting={inspecting === widget.id ? "" : undefined}
+              data-inspecting={inspectingId === widget.id ? "" : undefined}
               // Takes the slack at the end of a bar — how the account tile sits at the far right
               // without being pinned there.
               data-push={widget.props?.push ? "" : undefined}
@@ -710,77 +947,61 @@ export default function WidgetBoard({
                 setMenu({ x: e.clientX, y: e.clientY, id: widget.id });
               }}
               onDragStart={(e) => {
+                // The widget picked up, not every container it happens to sit in: this handler is on
+                // each ancestor section too, and letting the event through started a drag of all of
+                // them, the outermost winning the announcement.
+                e.stopPropagation();
                 draggedNode.current = e.currentTarget;
                 const box = e.currentTarget.getBoundingClientRect();
-                grabOffset.current = { x: e.clientX - box.left, y: e.clientY - box.top };
+                const grab = { x: e.clientX - box.left, y: e.clientY - box.top };
+                grabOffset.current = grab;
                 setDragging(widget.id);
-                // So another anchor can identify what landed on it, and so every anchor knows a
-                // drag is in flight and can offer itself as a target.
-                e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ id: widget.id, anchor }));
+                const dragPayload: WidgetDrag = {
+                  id: widget.id,
+                  kind: widget.kind,
+                  sourceContainerId: containerId ?? root.id,
+                  source: "board",
+                  anchor,
+                  grab,
+                };
+                e.dataTransfer.setData(DRAG_TYPE, JSON.stringify(dragPayload));
                 e.dataTransfer.effectAllowed = "move";
-                announceDrag({ id: widget.id, anchor });
+                announceDrag(dragPayload);
               }}
-              onDragEnd={() => {
+              onDragEnd={(e) => {
+                e.stopPropagation();
                 draggedNode.current = null;
                 grabOffset.current = null;
                 setDragging(null);
+                drawHint(null);
                 announceDrag(null);
               }}
               onDragOver={(e) => {
                 if (!editing || draggingGlobal === null) return;
-                if (containerId && draggingGlobal.id === containerId) return;
+                if (refusesDrop) return;
+                if (widget.id === draggingGlobal.id) return;
 
+                if (container) return;
+
+                e.preventDefault();
                 if (activeDraggingId !== null) {
-                  // The board places it by cell; a widget under the pointer is just something to
-                  // drop over, not something to swap with.
-                  e.preventDefault();
                   placeUnder(e);
-                } else if (containerId && draggingGlobal.kind && draggingGlobal.id) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  insertPreview(draggingGlobal.id, draggingGlobal.kind, containerId);
+                } else if (draggingGlobal.id) {
+                  hintDrop(e.clientX, e.clientY, draggingGlobal.id, draggingGlobal.kind);
                 }
               }}
               onDrop={(e) => {
-                if (!editing || draggingGlobal === null) return;
-                if (containerId && draggingGlobal.id === containerId) return;
-
-                if (activeDraggingId !== null) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  draggedNode.current = null;
-                  setDragging(null);
-                  finalizePreview();
-                  announceDrag(null);
-                  return;
-                }
-
-                const payload = readWidgetDrag(e.dataTransfer);
-                if (!payload) return;
-
-                if (payload.kind && payload.id) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  finalizePreview();
-                  return;
-                }
-
-                if (payload.kind) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const created = makeWidget(payload.kind);
-                  update((prev) => [...prev, created]);
-                  finalizePreview();
-                  return;
-                }
-
-                if (payload.id && containerId) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  moveWidgetToContainer(payload.id, containerId);
-                }
+                if (!editing || draggingGlobal === null || container || refusesDrop) return;
+                e.preventDefault();
+                e.stopPropagation();
+                acceptDrop(e);
               }}
             >
+              {/* The way out, along all four edges of a container holding what is being carried.
+                  Drawn over the container rather than made of padding: opening real space moved
+                  every widget on the page the moment a drag began. */}
+              {escaping && <EscapeEdges onEdgeOver={onEdgeOver} onEdgeDrop={onEdgeDrop} />}
+
               {/* The corner badge an iPhone puts on a jiggling icon: it acts on this one widget, so
                   it sits on the widget rather than in a toolbar. */}
               {editing && (
@@ -817,8 +1038,8 @@ export default function WidgetBoard({
                       type="button"
                       className="widget-btn"
                       title={t("inspector.open")}
-                      aria-expanded={inspecting === widget.id}
-                      onClick={() => inspect(inspecting === widget.id ? null : widget.id)}
+                      aria-expanded={inspectingId === widget.id}
+                      onClick={() => inspect(inspectingId === widget.id ? null : widget.id, flipRef.element(widget.id))}
                     >
                       <Glyph name="settings" />
                     </button>
@@ -830,15 +1051,17 @@ export default function WidgetBoard({
               {/* The corner you pull to resize. Pointer events rather than the drag machinery: a
                   drag would move the widget, and this has to change its size while it stays put.
                   Only where a size means something — a row or a column is measured by its contents. */}
-              {editing && (
+              {editing &&
+                ((spec.maxSpan ?? (columns ?? GRID_COLUMNS)) > (spec.minSpan ?? 1) ||
+                  (spec.maxRows ?? 40) > (spec.minRows ?? 1)) && (
                 <span
                   className="widget-resize-handle"
                   role="slider"
                   tabIndex={0}
                   aria-label={t("board.resize")}
                   aria-valuenow={spanOf(widget, columns ?? GRID_COLUMNS)}
-                  aria-valuemin={1}
-                  aria-valuemax={columns ?? GRID_COLUMNS}
+                  aria-valuemin={spec.minSpan ?? 1}
+                  aria-valuemax={Math.min(columns ?? GRID_COLUMNS, spec.maxSpan ?? (columns ?? GRID_COLUMNS))}
                   onPointerDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -886,8 +1109,12 @@ export default function WidgetBoard({
                     e.preventDefault();
 
                     const total = columns ?? GRID_COLUMNS;
-                    const span = Math.min(total, Math.max(1, spanOf(widget, total) + step));
-                    const rows = Math.min(40, Math.max(1, rowsOf(widget) + vertical));
+                    const minSpan = spec.minSpan ?? 1;
+                    const maxSpan = Math.min(total, spec.maxSpan ?? total);
+                    const minRows = spec.minRows ?? 1;
+                    const maxRows = spec.maxRows ?? 40;
+                    const span = Math.min(maxSpan, Math.max(minSpan, spanOf(widget, total) + step));
+                    const rows = Math.min(maxRows, Math.max(minRows, rowsOf(widget) + vertical));
                     const cell = cellOf(widget, total, span);
 
                     // A placed widget grows only into empty cells; an unplaced one is the grid's to
@@ -922,20 +1149,6 @@ export default function WidgetBoard({
             y={menu.y}
             items={menuItems(target)}
             onClose={() => setMenu(null)}
-          />
-        );
-      })()}
-
-      {editing && inspecting !== null && (() => {
-        const target = widgets.find((item) => item.id === inspecting);
-        if (!target) return null;
-
-        return (
-          <WidgetInspector
-            widget={target}
-            anchor={inspectorAnchor}
-            onChange={(next: Widget) => replace(target.id, next)}
-            onClose={() => inspect(null)}
           />
         );
       })()}

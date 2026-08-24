@@ -3,10 +3,11 @@ import AppModal from "./Common/Components/AppModal/AppModal";
 import SaveIndicator from "./Common/Components/SaveIndicator/SaveIndicator";
 import Wallpaper from "./Common/Components/Wallpaper/Wallpaper";
 import BoardSettings from "./Common/Components/BoardSettings/BoardSettings";
+import Inspector from "./Common/Components/Inspector/Inspector";
 import LeaveGuard from "./Common/Components/LeaveGuard/LeaveGuard";
 import { AuthProvider } from "./Services/auth";
 import { PageLayoutProvider, usePageLayout } from "./Services/pageLayout";
-import { columnsOf, flowOf, scrollOf } from "./Services/layout";
+import { columnsOf, findInTree, flowOf, scrollOf } from "./Services/layout";
 import WidgetBoard from "./Common/Components/WidgetBoard/WidgetBoard";
 import PageScope from "./Common/Components/PageScope/PageScope";
 import { setLanguage } from "./Services/i18n";
@@ -50,7 +51,7 @@ function pageTitle(pathname: string): string {
 function Shell() {
   const { pathname } = useRouter();
   const route = resolveRoute(pathname);
-  const { root, setRoot, editing } = usePageLayout();
+  const { root, setRoot, replaceWidget, editing, inspectingId, inspect, inspectorAnchor } = usePageLayout();
 
   useEffect(() => {
     document.title = pageTitle(pathname);
@@ -64,6 +65,7 @@ function Shell() {
 
   // What a profile's own stylesheet is scoped to on the server.
   const isProfileSite = getSiteHandle() !== null;
+  const inspectingWidget = inspectingId ? findInTree(root, inspectingId) : null;
 
   return (
     <>
@@ -72,6 +74,15 @@ function Shell() {
       {editing && <BoardSettings />}
 
       {editing && <SaveIndicator />}
+
+      {editing && inspectingWidget && (
+        <Inspector
+          widget={inspectingWidget}
+          anchor={{ current: inspectorAnchor }}
+          onChange={(next) => replaceWidget(inspectingWidget.id, next)}
+          onClose={() => inspect(null)}
+        />
+      )}
 
       <div className={isProfileSite ? "profile-custom page-root" : "page-root"}>
         <WidgetBoard

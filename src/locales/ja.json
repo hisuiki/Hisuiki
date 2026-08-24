@@ -180,7 +180,10 @@
     "fontSample": "いろはにほへと The quick brown fox 0123",
     "custom": "任意の色",
     "inherited": "継承",
-    "page": "ページインスペクター"
+    "page": "インスペクター",
+    "board": "ボード",
+    "detach": "フローティングウィンドウに切り替え",
+    "dock": "サイドバーに固定"
   },
   "webamp": {
     "untitled": "無題",
@@ -276,7 +279,9 @@
     "scrollable": "スクロールは有効ですが、スクロールするコンテナからはみ出すものは両方向で切り取られます。"
   },
   "layout": {
-    "columns": "列数",
+    "columns": "幅（列数）",
+    "span": "幅（列数）",
+    "rows": "高さ（行数）",
     "gap": "間隔"
   },
   "content": {

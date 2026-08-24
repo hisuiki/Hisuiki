@@ -586,7 +586,8 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
    action popover does not: the inline `position: fixed` is what carries it clear of the header. */
 .metro-dropdown-menu {
   z-index: 1200;
-  min-width: 220px;
+  min-width: 180px;
+  max-width: 240px;
   display: flex;
   flex-direction: column;
   border: 2px solid var(--color-accent);
@@ -597,16 +598,16 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   text-shadow: none;
   text-transform: none;
 }
-.metro-dropdown-identity { padding: 16px 20px; border-bottom: 1px solid var(--color-accent-soft); }
-.metro-dropdown-name { font-weight: 600; color: var(--color-text); font-size: 1.2em; margin-bottom: 4px; }
-.metro-dropdown-email { color: var(--color-text-secondary); font-size: 0.9em; overflow-wrap: anywhere; }
+.metro-dropdown-identity { padding: 10px 14px; border-bottom: 1px solid var(--color-accent-soft); }
+.metro-dropdown-name { font-weight: 600; color: var(--color-text); font-size: 1.05em; margin-bottom: 2px; }
+.metro-dropdown-email { color: var(--color-text-secondary); font-size: 0.82em; overflow-wrap: anywhere; }
 
 .metro-dropdown-item {
   display: block;
-  padding: 12px 20px;
+  padding: 8px 14px;
   color: var(--color-text);
   text-decoration: none;
-  font-size: 1.1em;
+  font-size: 0.95em;
   background: transparent;
   border: none;
   text-align: left;
@@ -746,6 +747,56 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 }
 .widget-board.is-snapping > .widget { position: relative; z-index: 1; }
 
+/* The room a drag needs, taken at the foot of the page only. A board packed to its last cell has
+   nothing left to aim at, and a point past the last track resolves to a new row — but growing the
+   nested boards too pushed everything below them down the moment a drag started, so the thing being
+   aimed at was never where it was grabbed. The page can only get taller at the bottom. */
+.page-root > .widget-board.is-arranging { padding-bottom: calc(2em + var(--row-height, 72px)); }
+
+/* Where the widget in hand would land. Solid, like the resize footprint, because it is the answer
+   rather than a guide. */
+.drop-hint {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  border: 1px solid var(--color-accent-strong);
+  background: rgba(84, 104, 224, 0.14);
+  transition: left 0.1s ease-out, top 0.1s ease-out, width 0.1s ease-out, height 0.1s ease-out;
+}
+
+/* A container's board fills the container. A tall container whose board sized itself to its
+   contents left hundreds of pixels of dead box below it, so what a drop over that space meant
+   depended on nothing the eye could see. */
+.widget[data-widget="container"] {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.widget[data-widget="container"] > .widget-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.widget[data-widget="container"] > .widget-content > .widget-board { flex: 1 1 auto; min-height: 0; }
+
+/* The way back out of a container, without the context menu: while a drag is inside it, every
+   container holding it shows a band along its edges, and dropping on one lands the widget on the
+   level that container itself sits on. Laid over the container so nothing shifts. */
+.widget-escape-edge {
+  position: absolute;
+  z-index: 5;
+  /* The same blue the lasso and the drop footprint use, so the whole gesture reads as one thing. */
+  background: rgba(84, 104, 224, 0.32);
+  border: 1px solid var(--color-accent-strong);
+  transition: background 0.12s ease-in-out;
+}
+.widget-escape-edge:hover { background: rgba(84, 104, 224, 0.62); }
+.widget-escape-edge[data-edge="top"] { top: 0; left: 0; right: 0; height: 22px; }
+.widget-escape-edge[data-edge="bottom"] { bottom: 0; left: 0; right: 0; height: 22px; }
+.widget-escape-edge[data-edge="left"] { top: 22px; bottom: 22px; left: 0; width: 22px; }
+.widget-escape-edge[data-edge="right"] { top: 22px; bottom: 22px; right: 0; width: 22px; }
+
 /* The corner itself: a bracket, not a gripper. Metro's chrome is flat, square and made of lines, so
    this is two edges of a square rather than the diagonal ridges other systems use — no gradient, no
    radius, nothing raised. Always present while arranging, dim enough to sit quietly under the widget
@@ -866,6 +917,97 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .widget-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .widget-btn-remove:hover { border-color: var(--color-danger); color: var(--color-danger); }
 .widget-grip { color: var(--color-text-faint); cursor: grab; padding-left: 0.2em; }
+
+/* When horizontal space is tight (1-column span), arrange the management controls vertically. */
+.widget-board.is-editing .widget[data-span="1"] {
+  .widget-chrome {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25em;
+    margin-bottom: 0.35em;
+    padding-right: 1.1em;
+  }
+  .widget-label {
+    font-size: 0.7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .widget-controls {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.2em;
+  }
+}
+
+/* 1x1 widgets: stack controls compactly and size content to fit neatly within 1 grid cell. */
+.widget-board.is-editing .widget[data-span="1"][data-rows="1"] {
+  padding: 0.35em 0.45em;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 0;
+  overflow: hidden;
+
+  .widget-chrome {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15em;
+    margin-bottom: 0.2em;
+    padding-right: 1.2em;
+  }
+  .widget-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+  }
+  .widget-controls {
+    display: flex;
+    flex-direction: row;
+    gap: 0.15em;
+  }
+  .widget-btn {
+    padding: 0.12em 0.3em;
+    font-size: 0.65rem;
+  }
+  .widget-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .metro-avatar-tile {
+    width: 2.2rem;
+    height: 2.2rem;
+  }
+}
+
+.widget[data-widget="account"] {
+  width: fit-content;
+  min-width: 0;
+  justify-self: start;
+
+  &[data-push] {
+    justify-self: end;
+  }
+
+  .metro-avatar-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  .metro-avatar-tile {
+    width: calc(3.4rem * var(--row-fit, 1));
+    height: calc(3.4rem * var(--row-fit, 1));
+    aspect-ratio: 1 / 1;
+  }
+}
+
 .widget-text-fields { display: flex; flex-direction: column; gap: 0.5em; }
 .widget-heading { margin: 0 0 0.4em; font-size: 1.1rem; }
 
@@ -1141,10 +1283,15 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   padding: 0.7em 0.9em; border-bottom: 1px solid var(--color-accent-soft);
 }
 .inspector-title { margin: 0; font-size: 0.95rem; font-weight: 600; letter-spacing: 0.02em; }
+.inspector-actions { display: flex; align-items: center; gap: 0.35em; }
+.inspector-btn,
 .inspector-close {
   background: none; border: none; color: var(--color-text-muted);
-  font: inherit; cursor: pointer; padding: 0 0.2em;
+  font: inherit; cursor: pointer; padding: 0.2em;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: color 0.15s ease-in-out;
 }
+.inspector-btn:hover,
 .inspector-close:hover { color: #ffffff; }
 
 .inspector-tabs {
@@ -1630,8 +1777,28 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* The gear would otherwise sit under the sidebar; it is hidden while the sidebar has its own. */
 body:has(.inspector.is-sidebar) .board-settings { display: none; }
 
+.inspector.is-floating {
+  position: fixed;
+  z-index: 1300;
+  max-height: calc(100vh - 24px);
+  display: flex;
+  flex-direction: column;
+}
+.inspector.is-floating .inspector-head {
+  cursor: grab;
+  user-select: none;
+}
+.inspector.is-floating .inspector-head:active {
+  cursor: grabbing;
+}
+.inspector.is-floating .inspector-body {
+  max-height: calc(100vh - 80px);
+  flex: 1;
+}
+
 @media screen and (max-width: 520px) {
   .inspector.is-sidebar { width: 100vw; border-left-width: 0; }
+  .inspector.is-floating { left: 0 !important; top: 0 !important; width: 100vw !important; max-height: 100vh !important; }
   body:has(.inspector.is-sidebar) .board-settings { display: none; }
 }
 

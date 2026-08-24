@@ -65,6 +65,14 @@ export interface ResizePreview {
   rows: number;
 }
 
+/** Where an incoming widget would land, in board-relative pixels. */
+export interface DropHint {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
 /** One tab of an Inspector panel. Content is a callback so it is built only when shown. */
 export interface InspectorTab {
   id: string;
@@ -75,26 +83,20 @@ export interface InspectorTab {
 }
 
 export interface InspectorProps {
-  title: string;
-  subtitle?: string;
-  /** Where a popover hangs from. Unused by the sidebar, which is fixed to the edge. */
-  anchor: RefObject<HTMLElement | null>;
-  /** A popover points at what it configures; a sidebar stays put beside the whole page. */
-  variant?: "popover" | "sidebar";
-  align?: "left" | "right";
-  tabs: InspectorTab[];
-  onClose: () => void;
-}
-
-export interface WidgetInspectorProps {
   widget: Widget;
-  /** Overrides the widget's own name, for the panel that configures the page as a whole. */
   title?: string;
-  anchor: RefObject<HTMLElement | null>;
-  variant?: "popover" | "sidebar";
+  subtitle?: string;
+  /** Where a popover/floating window can hang from or position against. */
+  anchor?: RefObject<HTMLElement | null>;
+  /** A popover/floating window or a docked sidebar. */
+  variant?: "popover" | "sidebar" | "floating";
+  align?: "left" | "right";
+  tabs?: InspectorTab[];
   onChange: (next: Widget) => void;
   onClose: () => void;
 }
+
+export type WidgetInspectorProps = InspectorProps;
 
 export interface BoardInspectorProps {
   anchor: Anchor;

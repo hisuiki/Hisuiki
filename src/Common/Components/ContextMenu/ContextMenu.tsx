@@ -22,7 +22,7 @@ export default function ContextMenu({ x, y, items, onClose }: ContextMenuProps) 
   const [open, setOpen] = useState<string | null>(null);
 
   useEffect(() => {
-    const onDown = (e: MouseEvent) => {
+    const onDown = (e: MouseEvent | PointerEvent) => {
       if (!root.current?.contains(e.target as Node)) onClose();
     };
     const onKey = (e: KeyboardEvent) => {
@@ -30,10 +30,10 @@ export default function ContextMenu({ x, y, items, onClose }: ContextMenuProps) 
     };
 
     // Capture, so a click anywhere closes this before that click does anything else.
-    document.addEventListener("mousedown", onDown, true);
+    document.addEventListener("pointerdown", onDown, true);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDown, true);
+      document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("keydown", onKey);
     };
   }, [onClose]);
@@ -49,6 +49,13 @@ export default function ContextMenu({ x, y, items, onClose }: ContextMenuProps) 
       role="menu"
       ref={root}
       style={{ position: "fixed", left: Math.max(MARGIN, left), top: Math.max(MARGIN, top), width: WIDTH }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
     >
       {items.map((item) => {
         const branch = Array.isArray(item.items) && item.items.length > 0;
@@ -65,7 +72,8 @@ export default function ContextMenu({ x, y, items, onClose }: ContextMenuProps) 
               aria-haspopup={branch || undefined}
               aria-expanded={branch ? open === item.label : undefined}
               className={`context-menu-item ${item.danger ? "is-danger" : ""}`.trim()}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (branch) {
                   setOpen(open === item.label ? null : item.label);
                   return;
@@ -86,7 +94,8 @@ export default function ContextMenu({ x, y, items, onClose }: ContextMenuProps) 
                     role="menuitem"
                     key={child.label}
                     className="context-menu-item"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       child.onSelect?.();
                       onClose();
                     }}

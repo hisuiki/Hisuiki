@@ -180,7 +180,10 @@
     "fontSample": "The quick brown fox jumps over the lazy dog",
     "custom": "Custom colour",
     "inherited": "inherited",
-    "page": "Page inspector"
+    "page": "Inspector",
+    "board": "Board",
+    "detach": "Detach to floating window",
+    "dock": "Dock to sidebar"
   },
   "webamp": {
     "untitled": "Untitled",
@@ -276,7 +279,9 @@
     "scrollable": "Scrolling is on, so the rest can be reached — but anything reaching outside a scrolling container is clipped on both axes."
   },
   "layout": {
-    "columns": "Columns",
+    "columns": "Width (columns)",
+    "span": "Width (columns)",
+    "rows": "Height (rows)",
     "gap": "Gap"
   },
   "content": {

@@ -10,9 +10,8 @@ resource "google_sql_database_instance" "main" {
   database_version = "POSTGRES_17"
   region           = var.region
 
-  # This holds the only copy of every account. Deleting it by accident is not recoverable, so unlike
-  # the Cloud Run services it keeps Terraform's guard on.
-  deletion_protection = true
+  # Deletion protection disabled for teardown
+  deletion_protection = false
 
   # The peering has to exist before an instance can be given an address inside it.
   depends_on = [

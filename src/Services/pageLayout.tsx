@@ -32,7 +32,11 @@ interface PageLayoutValue {
   /** Replaces one widget anywhere in the tree. */
   replaceWidget: (id: string, next: Widget) => void;
   /** Moves a widget into a container, from wherever in the tree it currently is. */
-  moveWidgetToContainer: (id: string, containerId: string) => void;
+  moveWidgetToContainer: (
+    id: string,
+    containerId: string,
+    targetCell?: { col?: number; row?: number },
+  ) => void;
   page: PageSettings;
   setPage: (page: PageSettings) => void;
   /** What is being dragged, so any container can offer itself as a target. */
@@ -42,6 +46,9 @@ interface PageLayoutValue {
   insertPreview: (id: string, kind: WidgetKind, containerId: string) => void;
   cancelPreview: () => void;
   finalizePreview: () => void;
+  inspectingId: string | null;
+  inspect: (id: string | null, anchor?: HTMLElement | null) => void;
+  inspectorAnchor: HTMLElement | null;
   reset: () => void;
   editing: boolean;
   setEditing: (editing: boolean) => void;
@@ -66,6 +73,9 @@ const PageLayoutContext = createContext<PageLayoutValue>({
   insertPreview: noop,
   cancelPreview: noop,
   finalizePreview: noop,
+  inspectingId: null,
+  inspect: noop,
+  inspectorAnchor: null,
   reset: noop,
   editing: false,
   setEditing: noop,
@@ -143,10 +153,14 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
     setDirty(true);
   }, []);
 
-  const moveWidgetToContainer = useCallback((id: string, containerId: string) => {
-    setRootState((current) => moveIntoContainer(current, id, containerId));
-    setDirty(true);
-  }, []);
+  const moveWidgetToContainer = useCallback(
+    (id: string, containerId: string, targetCell?: { col?: number; row?: number }) => {
+      setRootState((current) => moveIntoContainer(current, id, containerId, targetCell));
+      setDirty(true);
+      setDragging(null);
+    },
+    [],
+  );
 
   const insertPreview = useCallback((id: string, kind: WidgetKind, containerId: string) => {
     previewId.current = id;
@@ -186,6 +200,14 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
 
   const announceDrag = useCallback((drag: WidgetDrag | null) => setDragging(drag), []);
 
+  const [inspectingId, setInspectingId] = useState<string | null>(null);
+  const [inspectorAnchor, setInspectorAnchor] = useState<HTMLElement | null>(null);
+
+  const inspect = useCallback((id: string | null, anchor?: HTMLElement | null) => {
+    setInspectorAnchor(anchor ?? null);
+    setInspectingId(id);
+  }, []);
+
   const layout = useMemo(
     () => ({
       root,
@@ -199,6 +221,9 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
       insertPreview,
       cancelPreview,
       finalizePreview,
+      inspectingId,
+      inspect,
+      inspectorAnchor,
       reset,
       editing,
       setEditing,
@@ -215,6 +240,9 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
       insertPreview,
       cancelPreview,
       finalizePreview,
+      inspectingId,
+      inspect,
+      inspectorAnchor,
       reset,
       editing,
     ],

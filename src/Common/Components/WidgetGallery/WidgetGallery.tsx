@@ -200,9 +200,10 @@ export default function WidgetGallery({ onAdd, embedded }: WidgetGalleryProps) {
                       draggable
                       onDragStart={(e) => {
                         const id = `w-${newId()}`;
-                        e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ id, kind }));
+                        const dragPayload = { id, kind, source: "gallery" as const };
+                        e.dataTransfer.setData(DRAG_TYPE, JSON.stringify(dragPayload));
                         e.dataTransfer.effectAllowed = "copy";
-                        announceDrag({ id, kind });
+                        announceDrag(dragPayload);
                       }}
                       onDragEnd={() => cancelPreview()}
                     >

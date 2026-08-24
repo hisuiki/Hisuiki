@@ -1,4 +1,4 @@
-export type GlyphName = "close" | "duplicate" | "settings" | "grip" | "search" | "caret";
+export type GlyphName = "close" | "duplicate" | "settings" | "grip" | "search" | "caret" | "detach" | "dock";
 
 const PATHS: Record<GlyphName, string> = {
   close: "M5 5l10 10M15 5L5 15",
@@ -7,6 +7,8 @@ const PATHS: Record<GlyphName, string> = {
   grip: "M7 5h.01M13 5h.01M7 10h.01M13 10h.01M7 15h.01M13 15h.01",
   search: "M9 3a6 6 0 1 0 0 12A6 6 0 0 0 9 3zM13.5 13.5L17 17",
   caret: "M5 7l5 5 5-5",
+  detach: "M11 4h5v5M16 4l-7 7M13 9v7H4V6h7",
+  dock: "M3 4h14v12H3zM13 4v12",
 };
 
 /** A small drawn mark. Buttons carrying a unicode glyph render tofu wherever the font lacks it. */

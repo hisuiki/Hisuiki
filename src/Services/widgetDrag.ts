@@ -9,6 +9,10 @@ export interface WidgetDrag {
   anchor?: Anchor;
   /** Set when a new widget is being dragged out of the gallery. */
   kind?: WidgetKind;
+  sourceContainerId?: string;
+  source?: "gallery" | "board";
+  /** Where inside the widget it was picked up, so any board can drop its corner where it looks. */
+  grab?: { x: number; y: number };
 }
 
 export function readWidgetDrag(data: DataTransfer): WidgetDrag | null {
