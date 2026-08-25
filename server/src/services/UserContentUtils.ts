@@ -58,9 +58,15 @@ export function renderMarkdown(source: string): string {
   return marked.parse(source, { async: false }) as string;
 }
 
-/** Renders a user's markdown and strips everything the allow-list does not name. */
-export function renderUserHtml(source: string): string {
-  return sanitizeHtml(renderMarkdown(source), {
+/**
+ * Strips unsafe markup from already-rendered HTML.
+ *
+ * Keep this separate from Markdown parsing: legacy page rendering also produces HTML around its
+ * component sentinels, and every string that reaches `dangerouslySetInnerHTML` must pass through
+ * this same policy regardless of which parser produced it.
+ */
+export function sanitizeUserHtml(html: string): string {
+  return sanitizeHtml(html, {
     allowedTags: ALLOWED_TAGS,
     allowedAttributes: {
       // rel and target are listed because the transform below adds them: sanitize-html applies the
@@ -82,6 +88,11 @@ export function renderUserHtml(source: string): string {
       img: sanitizeHtml.simpleTransform("img", { loading: "lazy" }),
     },
   });
+}
+
+/** Renders a user's markdown and strips everything the allow-list does not name. */
+export function renderUserHtml(source: string): string {
+  return sanitizeUserHtml(renderMarkdown(source));
 }
 
 export interface ScopedCssResult {

@@ -10,6 +10,14 @@
     "signIn": "Sign in",
     "needHandle": "Please set a handle in Settings first."
   },
+  "navigationControls": {
+    "label": "Page navigation",
+    "back": "Back",
+    "forward": "Forward",
+    "quit": "Quit page",
+    "exitCustomization": "Exit customization",
+    "inspector": "Inspector"
+  },
   "board": {
     "resize": "Resize",
     "remove": "Remove",
@@ -25,6 +33,7 @@
     "emptyHint": "Drag a widget from the gallery above."
   },
   "boardsPreview": {
+    "label": "Generated page preview",
     "empty": "No body content to preview"
   },
   "gallery": {
@@ -157,12 +166,41 @@
     "title": "Inspector",
     "open": "Inspect",
     "tabs": {
+      "layers": "Layers",
       "general": "General",
       "customize": "Customize",
       "advanced": "Advanced",
       "layout": "Layout",
       "widgets": "Widgets"
     },
+    "sections": {
+      "content": "Content",
+      "position": "Position and size",
+      "arrange": "Align and distribute",
+      "autoLayout": "Container layout",
+      "scope": "Inheritance",
+      "appearance": "Appearance",
+      "typography": "Typography",
+      "accent": "Accent",
+      "css": "CSS"
+    },
+    "layers": {
+      "expand": "Expand layer",
+      "collapse": "Collapse layer"
+    },
+    "arrange": {
+      "left": "Align left",
+      "horizontalCenter": "Align horizontal centres",
+      "right": "Align right",
+      "top": "Align top",
+      "verticalCenter": "Align vertical centres",
+      "bottom": "Align bottom",
+      "horizontalDistribute": "Distribute horizontal spacing",
+      "verticalDistribute": "Distribute vertical spacing"
+    },
+    "selectedCount": "{{count}} layers selected",
+    "sameParent": "Select at least two layers in the same grid container to arrange them.",
+    "arrangeBlocked": "That arrangement would overlap another widget. Move or resize the blocking widget first.",
     "size": "Size",
     "sizes": {
       "small": "Small",

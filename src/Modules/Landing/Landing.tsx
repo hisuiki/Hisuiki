@@ -93,6 +93,9 @@ export default function Landing({ tab, config }: LandingProps) {
   }, [tab, activeSort, limit, randomRun, requestKey]);
 
   const heading = config?.heading?.trim() || (tab === "home" ? text.title : text.explore);
+  const dateFormatter = new Intl.DateTimeFormat(i18n.language === "ja" ? "ja-JP" : "en-US", {
+    dateStyle: "medium",
+  });
 
   return (
     <div className="file-content landing board-feed" data-phase="ready">
@@ -141,6 +144,9 @@ export default function Landing({ tab, config }: LandingProps) {
           {boards.map((board, index) => {
             const handle = board.owner.profile?.handle;
             if (!handle) return null;
+            const dateValue = board.publishedAt ?? board.updatedAt;
+            const date = new Date(dateValue);
+            const formattedDate = Number.isNaN(date.valueOf()) ? null : dateFormatter.format(date);
             return (
               <AppLink
                 key={board.id}
@@ -148,15 +154,18 @@ export default function Landing({ tab, config }: LandingProps) {
                 className="board-discovery-card"
                 style={{ "--board-order": index } as React.CSSProperties}
               >
-                <BoardPreview layout={board.layout} />
+                <BoardPreview layout={board.layout} owner={board.owner} />
                 <span className="board-discovery-copy">
                   <strong>{board.title}</strong>
-                  {board.description && <span>{board.description}</span>}
-                </span>
-                <span className="board-discovery-meta">
-                  {board.owner.image && <SmartImage src={board.owner.image} alt="" width="24" height="24" />}
-                  <span>{text.by} @{handle}</span>
+                  <span className="board-discovery-author">
+                    {board.owner.image && <SmartImage src={board.owner.image} alt="" width="24" height="24" />}
+                    <span>{text.by} @{handle}</span>
+                  </span>
+                  {formattedDate && (
+                    <time className="board-discovery-date" dateTime={date.toISOString()}>{formattedDate}</time>
+                  )}
                   <span className="board-discovery-views">{board.viewCount} {text.views}</span>
+                  {board.description && <span className="board-discovery-description">{board.description}</span>}
                 </span>
               </AppLink>
             );

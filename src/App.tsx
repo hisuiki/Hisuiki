@@ -2,9 +2,9 @@ import { useEffect } from "react";
 import AppModal from "./Common/Components/AppModal/AppModal";
 import SaveIndicator from "./Common/Components/SaveIndicator/SaveIndicator";
 import Wallpaper from "./Common/Components/Wallpaper/Wallpaper";
-import BoardSettings from "./Common/Components/BoardSettings/BoardSettings";
 import Inspector from "./Common/Components/Inspector/Inspector";
 import LeaveGuard from "./Common/Components/LeaveGuard/LeaveGuard";
+import NavigationControls from "./Common/Components/NavigationControls/NavigationControls";
 import { AuthProvider } from "./Services/AuthProvider";
 import { PageLayoutProvider, usePageLayout } from "./Services/PageLayoutProvider";
 import { columnsOf, findInTree, flowOf, scrollOf } from "./Services/LayoutUtils";
@@ -75,7 +75,7 @@ function MainWindow() {
     <>
       <Wallpaper />
 
-      {editing && <BoardSettings />}
+      <NavigationControls />
 
       {editing && <SaveIndicator />}
 

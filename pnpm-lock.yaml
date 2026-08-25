@@ -23,9 +23,6 @@ importers:
       i18next:
         specifier: ^26.4.0
         version: 26.4.0(typescript@5.9.3)
-      marked:
-        specifier: ^18.0.7
-        version: 18.0.9
       react:
         specifier: ^19.2.8
         version: 19.2.8

@@ -15,6 +15,10 @@ import {
 interface RouterValue {
   pathname: string;
   navigate: (to: string, options?: { replace?: boolean }) => void;
+  back: () => void;
+  forward: () => void;
+  canGoBack: boolean;
+  canGoForward: boolean;
   /** Registers a veto on navigation. Returning false holds it back. */
   setGuard: (guard: ((to: string) => boolean) | null) => void;
 }
@@ -22,8 +26,21 @@ interface RouterValue {
 const RouterContext = createContext<RouterValue>({
   pathname: "/",
   navigate: () => {},
+  back: () => {},
+  forward: () => {},
+  canGoBack: false,
+  canGoForward: false,
   setGuard: () => {},
 });
+
+const HISTORY_INDEX = "__hisuikiNavigationIndex";
+
+function initialHistoryIndex(): number {
+  const stored = Number(window.history.state?.[HISTORY_INDEX]);
+  if (Number.isInteger(stored) && stored >= 0) return stored;
+  window.history.replaceState({ ...window.history.state, [HISTORY_INDEX]: 0 }, "");
+  return 0;
+}
 
 /** Returns the handle of the current profile, parsed from subdomain or /users/:handle */
 /**
@@ -126,9 +143,20 @@ export function injectHandlePrefix(path: string): string {
 
 export function AppRouter({ children }: { children: ReactNode }) {
   const [pathname, setPathname] = useState(() => window.location.pathname);
+  const [historyIndex, setHistoryIndex] = useState(initialHistoryIndex);
+  const [furthestHistoryIndex, setFurthestHistoryIndex] = useState(historyIndex);
+  const historyIndexRef = useRef(historyIndex);
 
   useEffect(() => {
-    const onPopState = () => setPathname(window.location.pathname);
+    const onPopState = (event: PopStateEvent) => {
+      const stored = Number(event.state?.[HISTORY_INDEX]);
+      const nextIndex = Number.isInteger(stored) && stored >= 0
+        ? stored
+        : Math.max(0, historyIndexRef.current - 1);
+      historyIndexRef.current = nextIndex;
+      setHistoryIndex(nextIndex);
+      setPathname(window.location.pathname);
+    };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
@@ -142,15 +170,29 @@ export function AppRouter({ children }: { children: ReactNode }) {
   const navigate = useCallback((to: string, options?: { replace?: boolean }) => {
     to = injectHandlePrefix(to);
     if (guard.current && !guard.current(to)) return;
-    if (options?.replace) window.history.replaceState({}, "", to);
-    else window.history.pushState({}, "", to);
+    if (options?.replace) {
+      window.history.replaceState({ ...window.history.state, [HISTORY_INDEX]: historyIndexRef.current }, "", to);
+    } else {
+      const nextIndex = historyIndexRef.current + 1;
+      window.history.pushState({ [HISTORY_INDEX]: nextIndex }, "", to);
+      historyIndexRef.current = nextIndex;
+      setHistoryIndex(nextIndex);
+      setFurthestHistoryIndex(nextIndex);
+    }
     setPathname(new URL(to, window.location.href).pathname);
     window.scrollTo(0, 0);
   }, []);
 
+  const back = useCallback(() => window.history.back(), []);
+  const forward = useCallback(() => window.history.forward(), []);
+  // Only app-owned entries have an index. A browser may have an external/blank entry behind the
+  // app, but that is not a useful "previous page" for this control; Quit handles leaving the app.
+  const canGoBack = historyIndex > 0;
+  const canGoForward = historyIndex < furthestHistoryIndex;
+
   const value = useMemo<RouterValue>(
-    () => ({ pathname, navigate, setGuard }),
-    [pathname, navigate, setGuard],
+    () => ({ pathname, navigate, back, forward, canGoBack, canGoForward, setGuard }),
+    [pathname, navigate, back, forward, canGoBack, canGoForward, setGuard],
   );
 
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>;

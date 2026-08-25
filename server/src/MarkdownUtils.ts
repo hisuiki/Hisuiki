@@ -3,6 +3,7 @@
  * agree. GFM, with raw HTML passed through so the component sentinels below survive rendering.
  */
 import { Marked } from "marked";
+import { sanitizeUserHtml } from "./services/UserContentUtils.js";
 
 export interface PageMeta {
   title: string;
@@ -25,6 +26,13 @@ const COMPONENT_TAGS: Record<string, string> = {
 const SELF_CLOSING_TAGS: Record<string, string> = {
   PostsIndex: "posts-index",
 };
+
+const ALLOWED_COMPONENT_TYPES = new Set([
+  ...Object.values(COMPONENT_TAGS),
+  ...Object.values(SELF_CLOSING_TAGS),
+]);
+
+const COMPONENT_SENTINEL_RX = /<!--md-component:([\w-]+):([^>]*?)-->([\s\S]*?)<!--\/md-component-->/g;
 
 /**
  * A plain `key: value` scan rather than a YAML parser: only title/description/author are consumed,
@@ -64,6 +72,16 @@ function emptyMeta(): PageMeta {
   return { title: "", description: "", author: "", lastEdited: "" };
 }
 
+/** A component title lives inside an HTML comment until React reads it as text. */
+function sanitizeComponentTitle(title: string): string {
+  return title
+    .replace(/[<>]/g, "")
+    .replace(/--+/g, "—")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .trim()
+    .slice(0, 200);
+}
+
 function injectComponentSentinels(markdown: string): string {
   let result = markdown;
 
@@ -80,7 +98,7 @@ function injectComponentSentinels(markdown: string): string {
       (_match, title: string | undefined, body: string | undefined) => {
         const trimmed = (body ?? "").trim();
         const innerHtml = trimmed ? (marked.parse(trimmed) as string).trim() : "";
-        return `<!--md-component:${type}:${title ?? ""}-->${innerHtml}<!--/md-component-->`;
+        return `<!--md-component:${type}:${sanitizeComponentTitle(title ?? "")}-->${innerHtml}<!--/md-component-->`;
       }
     );
   }
@@ -105,21 +123,41 @@ function rewriteAssetPaths(html: string, assetBase: string): string {
     return `href="${isJa ? `/posts/${name}/ja` : `/posts/${name}`}"`;
   });
 
-  // A 1×1 placeholder and a class to style, rather than the browser's broken-image glyph.
-  const errorHandler =
-    "this.onerror=null;" +
-    "this.classList.add('img-error');" +
-    "this.removeAttribute('srcset');" +
-    "this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22/%3E';";
+  return result;
+}
 
-  return result.replace(/<img\b/g, `<img onerror="${errorHandler}"`);
+/**
+ * Sanitizes normal HTML and component bodies independently, then restores only known sentinels.
+ * sanitize-html intentionally removes comments, so sanitizing the complete document in one call
+ * would also remove the inert markers used by the React renderer.
+ */
+function sanitizePageHtml(html: string): string {
+  let safe = "";
+  let lastIndex = 0;
+
+  COMPONENT_SENTINEL_RX.lastIndex = 0;
+  for (let match = COMPONENT_SENTINEL_RX.exec(html); match; match = COMPONENT_SENTINEL_RX.exec(html)) {
+    safe += sanitizeUserHtml(html.slice(lastIndex, match.index));
+
+    const type = match[1] ?? "";
+    if (ALLOWED_COMPONENT_TYPES.has(type)) {
+      const title = sanitizeComponentTitle(match[2] ?? "");
+      const body = sanitizeUserHtml(match[3] ?? "");
+      safe += `<!--md-component:${type}:${title}-->${body}<!--/md-component-->`;
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  safe += sanitizeUserHtml(html.slice(lastIndex));
+  return safe;
 }
 
 /** Full render of a raw file (frontmatter + body) to metadata and HTML. */
 export function renderRawText(rawText: string, assetBase: string): { meta: PageMeta; html: string } {
   const { meta, content } = parseFrontmatter(rawText);
   const html = marked.parse(injectComponentSentinels(content)) as string;
-  return { meta, html: rewriteAssetPaths(html, assetBase) };
+  return { meta, html: sanitizePageHtml(rewriteAssetPaths(html, assetBase)) };
 }
 
 /** "Aug 17, 2026" — the display format the frontend expects for a page's last-edited date. */

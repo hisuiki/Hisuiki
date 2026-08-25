@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import MetroSelect from "../MetroSelect/MetroSelect";
 
 /** Shared field primitives, so the widget and board panels look the same without saying so twice. */
@@ -58,6 +58,70 @@ export function TextField({
     <Field label={label}>
       <input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
     </Field>
+  );
+}
+
+export function NumberField({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  disabled?: boolean;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="inspector-number-field">
+      <span>{label}</span>
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        step={step}
+        disabled={disabled}
+        onChange={(event) => {
+          const next = Number(event.target.value);
+          if (Number.isFinite(next)) onChange(next);
+        }}
+      />
+    </label>
+  );
+}
+
+/** A Figma-style property group whose disclosure state stays local to the inspector session. */
+export function InspectorSection({
+  title,
+  children,
+  defaultOpen = true,
+}: {
+  title: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <section className="inspector-section">
+      <button
+        type="button"
+        className="inspector-section-toggle"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((current) => !current)}
+      >
+        <span className={`inspector-section-caret ${isOpen ? "" : "is-collapsed"}`.trim()} aria-hidden="true" />
+        <strong>{title}</strong>
+      </button>
+      {isOpen && <div className="inspector-section-content">{children}</div>}
+    </section>
   );
 }
 

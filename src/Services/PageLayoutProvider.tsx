@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   defaultRoot,
+  findInTree,
   insertInTree,
   makeWidget,
   moveIntoContainer,
@@ -33,6 +34,8 @@ interface PageLayoutValue {
   setRoot: (next: Widget | ((prev: Widget) => Widget)) => void;
   /** Replaces one widget anywhere in the tree. */
   replaceWidget: (id: string, next: Widget) => void;
+  /** Applies one transformation to several widgets in a single tree update. */
+  updateWidgets: (ids: ReadonlySet<string>, update: (widget: Widget) => Widget) => void;
   /** Moves a widget into a container, from wherever in the tree it currently is. */
   moveWidgetToContainer: (
     id: string,
@@ -48,6 +51,13 @@ interface PageLayoutValue {
   insertPreview: (id: string, kind: WidgetKind, containerId: string) => void;
   cancelPreview: () => void;
   finalizePreview: () => void;
+  selectedIds: ReadonlySet<string>;
+  /** Shares one selection between the canvas, layers tree, and property inspector. */
+  selectWidgets: (
+    ids: Iterable<string>,
+    primaryId?: string | null,
+    anchor?: HTMLElement | null,
+  ) => void;
   inspectingId: string | null;
   inspect: (id: string | null, anchor?: HTMLElement | null) => void;
   inspectorAnchor: HTMLElement | null;
@@ -74,6 +84,7 @@ const PageLayoutContext = createContext<PageLayoutValue>({
   root: defaultRoot(),
   setRoot: noop,
   replaceWidget: noop,
+  updateWidgets: noop,
   moveWidgetToContainer: noop,
   page: { wallpaper: { source: "bing" } },
   setPage: noop,
@@ -82,6 +93,8 @@ const PageLayoutContext = createContext<PageLayoutValue>({
   insertPreview: noop,
   cancelPreview: noop,
   finalizePreview: noop,
+  selectedIds: new Set(),
+  selectWidgets: noop,
   inspectingId: null,
   inspect: noop,
   inspectorAnchor: null,
@@ -128,6 +141,9 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
   const [displayPathname, setDisplayPathname] = useState(pathname);
   const [transition, setTransition] = useState<"idle" | "leaving" | "entering">("idle");
   const [board, setBoard] = useState<BoardSummary | null>(null);
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const [inspectingId, setInspectingId] = useState<string | null>(null);
+  const [inspectorAnchor, setInspectorAnchor] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -173,6 +189,9 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
         setRootState(readLayout(nextLayout));
         setPageState(readPage(nextLayout?.page));
         setBoard(loaded.board);
+        setSelectedIds(new Set());
+        setInspectingId(null);
+        setInspectorAnchor(null);
         setDirty(false);
         setSaveError(null);
         currentKey.current = target;
@@ -191,6 +210,9 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
         setRootState(defaultRoot());
         setPageState(readPage(undefined));
         setBoard(null);
+        setSelectedIds(new Set());
+        setInspectingId(null);
+        setInspectorAnchor(null);
         setSaveError(error instanceof Error ? error.message : String(error));
         currentKey.current = target;
         setDisplayPathname(pathname);
@@ -237,6 +259,19 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
     setRootState((current) => updateInTree(current, id, () => next));
     setDirty(true);
   }, []);
+
+  const updateWidgets = useCallback(
+    (ids: ReadonlySet<string>, update: (widget: Widget) => Widget) => {
+      if (ids.size === 0) return;
+      setRootState((current) => {
+        let next = current;
+        for (const id of ids) next = updateInTree(next, id, update);
+        return next;
+      });
+      setDirty(true);
+    },
+    [],
+  );
 
   const moveWidgetToContainer = useCallback(
     (id: string, containerId: string, targetCell?: { col?: number; row?: number }) => {
@@ -285,19 +320,42 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
 
   const announceDrag = useCallback((drag: WidgetDrag | null) => setDragging(drag), []);
 
-  const [inspectingId, setInspectingId] = useState<string | null>(null);
-  const [inspectorAnchor, setInspectorAnchor] = useState<HTMLElement | null>(null);
+  const selectWidgets = useCallback(
+    (ids: Iterable<string>, primaryId?: string | null, anchor?: HTMLElement | null) => {
+      const next = new Set(ids);
+      const primary = primaryId === undefined ? (next.values().next().value ?? null) : primaryId;
+      setSelectedIds(next);
+      setInspectingId(primary && next.has(primary) ? primary : (next.values().next().value ?? null));
+      setInspectorAnchor(anchor ?? null);
+    },
+    [],
+  );
 
   const inspect = useCallback((id: string | null, anchor?: HTMLElement | null) => {
     setInspectorAnchor(anchor ?? null);
     setInspectingId(id);
+    setSelectedIds(id ? new Set([id]) : new Set());
   }, []);
+
+  // Deleting, wrapping, or resetting can remove a selected layer without going through the
+  // selection API. Prune those ids so the canvas and Inspector never disagree about what exists.
+  useEffect(() => {
+    setSelectedIds((current) => {
+      const next = new Set([...current].filter((id) => findInTree(root, id) !== null));
+      return next.size === current.size ? current : next;
+    });
+    if (inspectingId && findInTree(root, inspectingId) === null) {
+      setInspectingId(null);
+      setInspectorAnchor(null);
+    }
+  }, [root, inspectingId]);
 
   const layout = useMemo(
     () => ({
       root,
       setRoot,
       replaceWidget,
+      updateWidgets,
       moveWidgetToContainer,
       page,
       setPage,
@@ -306,6 +364,8 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
       insertPreview,
       cancelPreview,
       finalizePreview,
+      selectedIds,
+      selectWidgets,
       inspectingId,
       inspect,
       inspectorAnchor,
@@ -321,6 +381,7 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
       root,
       setRoot,
       replaceWidget,
+      updateWidgets,
       moveWidgetToContainer,
       page,
       setPage,
@@ -329,6 +390,8 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
       insertPreview,
       cancelPreview,
       finalizePreview,
+      selectedIds,
+      selectWidgets,
       inspectingId,
       inspect,
       inspectorAnchor,

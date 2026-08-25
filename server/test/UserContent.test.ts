@@ -11,6 +11,7 @@
 import { renderUserHtml, scopeCss } from "../src/services/UserContentUtils.js";
 import { scopeLayoutCss } from "../src/services/LayoutCssUtils.js";
 import { synchronizeSiteLayout } from "../src/services/SiteLayoutUtils.js";
+import { renderRawText } from "../src/MarkdownUtils.js";
 
 const checks: [string, boolean][] = [];
 const check = (name: string, pass: boolean) => checks.push([name, pass]);
@@ -21,6 +22,12 @@ check("strips <script>", !script.includes("<script") && !script.includes("alert(
 
 const onerror = renderUserHtml('<img src="x" onerror="alert(1)">');
 check("strips event handlers", !onerror.includes("onerror"));
+
+const literalOnerror = renderUserHtml("<img src=x onerror=alert(1)>");
+check(
+  "strips an unquoted img onerror payload",
+  !literalOnerror.includes("onerror") && !literalOnerror.includes("alert(1)"),
+);
 
 const jsHref = renderUserHtml('<a href="javascript:alert(1)">x</a>');
 check("strips javascript: href", !jsHref.includes("javascript:"));
@@ -39,6 +46,41 @@ check("strips inline style attribute", !styleAttr.includes("style="));
 
 const keeps = renderUserHtml('# Title\n\n**bold** and `code`');
 check("keeps ordinary markdown", keeps.includes("<h1") && keeps.includes("<strong"));
+
+// The repository/CMS renderer is a second Markdown entry point. Its component comment markers
+// remain inert, while both ordinary page HTML and the HTML inside a component use the same policy.
+const rawPage = renderRawText(
+  '<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n\n<a href="javascript:alert(2)">x</a>',
+  "https://assets.example.com",
+).html;
+check(
+  "sanitizes raw HTML in repository pages",
+  !rawPage.includes("<script") &&
+    !rawPage.includes("onerror") &&
+    !rawPage.includes("javascript:") &&
+    !rawPage.includes("alert("),
+);
+
+const componentPage = renderRawText(
+  '<Info title="Notice">safe **body** <img src=x onerror=alert(1)></Info>',
+  "https://assets.example.com",
+).html;
+check(
+  "sanitizes custom component bodies and preserves their sentinel",
+  componentPage.includes("<!--md-component:info:Notice-->") &&
+    componentPage.includes("<strong>body</strong>") &&
+    !componentPage.includes("onerror") &&
+    !componentPage.includes("alert(1)"),
+);
+
+const rewrittenImage = renderRawText(
+  '<img src="public/photo.jpg" alt="photo">',
+  "https://assets.example.com",
+).html;
+check(
+  "rewrites page images without injecting an inline error handler",
+  rewrittenImage.includes('src="https://assets.example.com/photo.jpg"') && !rewrittenImage.includes("onerror"),
+);
 
 // --- CSS ---
 const scoped = scopeCss("p { color: red }", ".scope-abc");

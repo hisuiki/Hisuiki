@@ -10,6 +10,14 @@
     "signIn": "サインイン",
     "needHandle": "先に設定でハンドルを決めてください。"
   },
+  "navigationControls": {
+    "label": "ページナビゲーション",
+    "back": "戻る",
+    "forward": "進む",
+    "quit": "ページを終了",
+    "exitCustomization": "カスタマイズを終了",
+    "inspector": "インスペクター"
+  },
   "board": {
     "resize": "サイズ変更",
     "remove": "削除",
@@ -25,6 +33,7 @@
     "emptyHint": "上のギャラリーからウィジェットをドラッグしてください。"
   },
   "boardsPreview": {
+    "label": "生成されたページプレビュー",
     "empty": "プレビューできる本文がありません"
   },
   "gallery": {
@@ -157,12 +166,41 @@
     "title": "インスペクター",
     "open": "設定",
     "tabs": {
+      "layers": "レイヤー",
       "general": "一般",
       "customize": "外観",
       "advanced": "詳細",
       "layout": "レイアウト",
       "widgets": "ウィジェット"
     },
+    "sections": {
+      "content": "内容",
+      "position": "位置とサイズ",
+      "arrange": "整列と均等配置",
+      "autoLayout": "コンテナレイアウト",
+      "scope": "継承範囲",
+      "appearance": "外観",
+      "typography": "文字",
+      "accent": "アクセント",
+      "css": "CSS"
+    },
+    "layers": {
+      "expand": "レイヤーを展開",
+      "collapse": "レイヤーを折りたたむ"
+    },
+    "arrange": {
+      "left": "左揃え",
+      "horizontalCenter": "左右中央揃え",
+      "right": "右揃え",
+      "top": "上揃え",
+      "verticalCenter": "上下中央揃え",
+      "bottom": "下揃え",
+      "horizontalDistribute": "左右の間隔を均等にする",
+      "verticalDistribute": "上下の間隔を均等にする"
+    },
+    "selectedCount": "{{count}} 個のレイヤーを選択中",
+    "sameParent": "同じグリッドコンテナ内のレイヤーを2つ以上選択してください。",
+    "arrangeBlocked": "別のウィジェットと重なる配置です。先にそのウィジェットを移動またはサイズ変更してください。",
     "size": "サイズ",
     "sizes": {
       "small": "小",

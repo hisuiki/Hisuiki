@@ -152,6 +152,8 @@ export default function WidgetBoard({
     finalizePreview,
     moveWidgetToContainer,
     insertPreview,
+    selectedIds,
+    selectWidgets,
     inspectingId,
     inspect,
     root,
@@ -207,14 +209,6 @@ export default function WidgetBoard({
     };
   }, [preview, applySize]);
 
-  /**
-   * The widgets picked out, at this level only.
-   *
-   * Selection does not cross boards: what it is for is acting on a group of siblings at once —
-   * wrapping them into a container above all — and a set spanning two levels has no single list to
-   * take them out of.
-   */
-  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
 
   /**
@@ -575,11 +569,9 @@ export default function WidgetBoard({
 
       lasso.current = { x1: event.clientX, y1: event.clientY, x2: event.clientX, y2: event.clientY };
       drawBand();
-      // Only if something was selected: an unconditional set would re-render the board on every click
-      // on the background.
-      setSelected((current) => (current.size === 0 ? current : new Set()));
+      if (selectedIds.size > 0) selectWidgets([]);
     },
-    [editing],
+    [editing, selectedIds, selectWidgets],
   );
 
   const endLasso = useCallback(() => {
@@ -609,8 +601,9 @@ export default function WidgetBoard({
       if (!misses) caught.add(item.id);
     }
 
-    setSelected(caught);
-  }, [widgets, flipRef]);
+    const primary = caught.values().next().value ?? null;
+    selectWidgets(caught, primary, boardRef.current);
+  }, [widgets, flipRef, selectWidgets]);
 
   useEffect(() => {
     const onWindowPointerMove = (e: PointerEvent) => {
@@ -657,7 +650,7 @@ export default function WidgetBoard({
     const onParentContextMenu = (e: MouseEvent) => {
       if (e.target === parent) {
         e.preventDefault();
-        setSelected((current) => (current.size === 0 ? current : new Set()));
+        if (selectedIds.size > 0) selectWidgets([]);
         setMenu(null);
       }
     };
@@ -697,11 +690,14 @@ export default function WidgetBoard({
       parent.removeEventListener("dragover", onParentDragOver);
       parent.removeEventListener("drop", onParentDrop);
     };
-  }, [editing, containerId, root.id, startLasso, draggingGlobal, finalizePreview, announceDrag, moveWidgetToContainer, dropPlan, drawHint]);
+  }, [editing, containerId, root.id, startLasso, draggingGlobal, finalizePreview, announceDrag, moveWidgetToContainer, dropPlan, drawHint, selectedIds, selectWidgets]);
 
   /** What the right-click menu offers for a widget, and for a selection it happens to be part of. */
   const menuItems = (item: Widget): MenuItem[] => {
-    const group = selected.has(item.id) && selected.size > 1 ? selected : new Set([item.id]);
+    // Group operations act on siblings only. The shared selection may span layers, which has no
+    // single list that can be wrapped or removed as one operation.
+    const selectedHere = new Set(widgets.filter((candidate) => selectedIds.has(candidate.id)).map((candidate) => candidate.id));
+    const group = selectedHere.has(item.id) && selectedHere.size > 1 ? selectedHere : new Set([item.id]);
     const spec = WIDGETS[item.kind];
 
     return [
@@ -725,7 +721,7 @@ export default function WidgetBoard({
                 for (const id of group) {
                   moveWidgetToContainer(id, target);
                 }
-                setSelected(new Set());
+                selectWidgets([]);
               },
             },
           ]
@@ -735,7 +731,7 @@ export default function WidgetBoard({
         label: group.size > 1 ? t("menu.wrapMany", { count: group.size }) : t("menu.wrap"),
         onSelect: () => {
           update(wrapWidgets(widgets, group as Set<string>, "grid"));
-          setSelected(new Set());
+          selectWidgets([]);
         },
       },
       {
@@ -747,7 +743,7 @@ export default function WidgetBoard({
             return;
           }
           update(widgets.filter((w) => !group.has(w.id)));
-          setSelected(new Set());
+          selectWidgets([]);
         },
       },
     ];
@@ -785,7 +781,7 @@ export default function WidgetBoard({
           if (!editing) return;
           e.preventDefault();
           if (containerId) e.stopPropagation();
-          setSelected((current) => (current.size === 0 ? current : new Set()));
+          if (selectedIds.size > 0) selectWidgets([]);
           setMenu(null);
         }}
         onDragOver={(e) => {
@@ -899,7 +895,7 @@ export default function WidgetBoard({
               className={[
                 "widget",
                 activeDraggingId === widget.id ? "is-dragging" : "",
-                selected.has(widget.id) ? "is-selected" : "",
+                selectedIds.has(widget.id) ? "is-selected" : "",
                 escaping ? "is-escape" : "",
               ]
                 .filter(Boolean)
@@ -937,13 +933,31 @@ export default function WidgetBoard({
               // without being pinned there.
               data-push={widget.props?.push ? "" : undefined}
               draggable={editing && preview === null}
+              onPointerDown={(e) => {
+                if (!editing || e.button !== 0) return;
+                const target = e.target as HTMLElement | null;
+                if (target?.closest("button, input, textarea, select, a, [role='slider']")) return;
+                e.stopPropagation();
+
+                if (e.shiftKey || e.metaKey || e.ctrlKey) {
+                  const next = new Set(selectedIds);
+                  if (next.has(widget.id)) next.delete(widget.id);
+                  else next.add(widget.id);
+                  const primary = next.has(widget.id) ? widget.id : (next.values().next().value ?? null);
+                  selectWidgets(next, primary, flipRef.element(widget.id));
+                } else if (selectedIds.size !== 1 || !selectedIds.has(widget.id)) {
+                  selectWidgets([widget.id], widget.id, flipRef.element(widget.id));
+                }
+              }}
               onContextMenu={(e) => {
                 if (!editing) return;
                 e.preventDefault();
                 e.stopPropagation();
                 // Right-clicking outside the selection acts on what was clicked, not on what
                 // happened to be selected a moment ago.
-                if (!selected.has(widget.id)) setSelected(new Set([widget.id]));
+                if (!selectedIds.has(widget.id)) {
+                  selectWidgets([widget.id], widget.id, flipRef.element(widget.id));
+                }
                 setMenu({ x: e.clientX, y: e.clientY, id: widget.id });
               }}
               onDragStart={(e) => {

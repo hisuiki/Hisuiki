@@ -246,10 +246,9 @@ export default function PageEditor({
     try {
       setPreviewHtml(await previewMarkdown(markdown));
     } catch {
-      // API unreachable — render locally. Custom component tags won't expand, but prose does.
-      // Imported on demand so the fallback renderer stays out of the main bundle.
-      const { marked } = await import("marked");
-      setPreviewHtml(await marked.parse(markdown));
+      // Never parse untrusted Markdown directly in the browser: Marked deliberately preserves raw
+      // HTML, and this value is rendered with dangerouslySetInnerHTML. The API owns sanitization.
+      setPreviewHtml('<p class="editor-status">Preview unavailable.</p>');
     }
   };
 
