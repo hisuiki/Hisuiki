@@ -14,6 +14,13 @@
 
 name: hisuiki
 
+x-app-build: &app-build
+  context: .
+  dockerfile: server/Dockerfile
+  args:
+    VITE_API_BASE_URL: http://localhost:8081
+    VITE_ASSET_BASE_URL: http://localhost:4444/storage/v1/b/hisuiki-assets-prod/o
+
 services:
   postgres:
     restart: unless-stopped
@@ -50,16 +57,42 @@ services:
     volumes:
       - ./.local/gcs:/data
 
-  api:
+  pgbouncer:
     restart: unless-stopped
-    build:
-      context: .
-      dockerfile: server/Dockerfile
-      args:
-        VITE_API_BASE_URL: http://localhost:8081
-        VITE_ASSET_BASE_URL: http://localhost:4444/storage/v1/b/hisuiki-assets-prod/o
+    image: hisuiki-app:local
+    build: *app-build
+    command: ["/usr/local/bin/PgBouncerEntrypoint.sh"]
     depends_on:
       postgres:
+        condition: service_healthy
+    environment:
+      PGBOUNCER_DATABASE_HOST: postgres
+      PGBOUNCER_DATABASE_NAME: hisuiki
+      PGBOUNCER_DATABASE_USER: hisuiki
+      PGBOUNCER_DATABASE_PASSWORD: hisuiki
+      # Four backend connections per bouncer are enough for the production instance size. Client
+      # connections queue here instead of multiplying into one PostgreSQL process each.
+      PGBOUNCER_DEFAULT_POOL_SIZE: 4
+      PGBOUNCER_RESERVE_POOL_SIZE: 1
+      PGBOUNCER_MAX_CLIENT_CONN: 100
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - const s=require('net').connect(6432,'127.0.0.1');s.on('connect',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    restart: unless-stopped
+    image: hisuiki-app:local
+    build: *app-build
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pgbouncer:
         condition: service_healthy
       gcs:
         condition: service_started
@@ -68,7 +101,10 @@ services:
     environment:
       APP_ROLE: api
       PORT: 8080
-      DATABASE_URL: postgresql://hisuiki:hisuiki@postgres:5432/hisuiki
+      DATABASE_URL: postgresql://hisuiki:hisuiki@pgbouncer:6432/hisuiki
+      # Prisma CLI commands use this direct route and never run schema changes through a
+      # transaction-pooling connection.
+      DIRECT_DATABASE_URL: postgresql://hisuiki:hisuiki@postgres:5432/hisuiki
       GCS_BUCKET: hisuiki-assets-prod
       GCS_PREFIX: static
       # User-authored content: post bodies and uploaded media, kept apart from the site's own assets.
@@ -86,12 +122,8 @@ services:
 
   web:
     restart: unless-stopped
-    build:
-      context: .
-      dockerfile: server/Dockerfile
-      args:
-        VITE_API_BASE_URL: http://localhost:8081
-        VITE_ASSET_BASE_URL: http://localhost:4444/storage/v1/b/hisuiki-assets-prod/o
+    image: hisuiki-app:local
+    build: *app-build
     depends_on:
       - api
     ports:

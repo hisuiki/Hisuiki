@@ -325,10 +325,16 @@ export function PageLayoutProvider({ children }: { children: ReactNode }) {
       const next = new Set(ids);
       const primary = primaryId === undefined ? (next.values().next().value ?? null) : primaryId;
       setSelectedIds(next);
-      setInspectingId(primary && next.has(primary) ? primary : (next.values().next().value ?? null));
-      setInspectorAnchor(anchor ?? null);
+      // Selection starts on pointerdown, while a native drag starts a moment later. Opening a
+      // docked Inspector here resized the canvas between those two events and moved the drop grid
+      // underneath the pointer. Selection follows an Inspector that is already open; only inspect()
+      // opens one.
+      if (inspectingId !== null) {
+        setInspectingId(primary && next.has(primary) ? primary : (next.values().next().value ?? null));
+        setInspectorAnchor(anchor ?? null);
+      }
     },
-    [],
+    [inspectingId],
   );
 
   const inspect = useCallback((id: string | null, anchor?: HTMLElement | null) => {

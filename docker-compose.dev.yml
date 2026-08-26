@@ -74,6 +74,7 @@ services:
       - ./public:/repo/public
       - ./vite.config.ts:/repo/vite.config.ts
       - ./tsconfig.json:/repo/tsconfig.json
+      - ./eslint.config.js:/repo/eslint.config.js:ro
     environment:
       APP_ROLE: api
       PORT: 5066
@@ -128,6 +129,7 @@ services:
       - ./public:/repo/public
       - ./vite.config.ts:/repo/vite.config.ts
       - ./tsconfig.json:/repo/tsconfig.json
+      - ./eslint.config.js:/repo/eslint.config.js:ro
     environment:
       # Empty, so the bundle calls its own origin and Vite proxies to the API container.
       VITE_API_BASE_URL: ""

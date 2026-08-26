@@ -90,7 +90,7 @@ function MainWindow() {
 
       <div
         key={layoutKey}
-        className={`page-root board-surface is-${transition}`}
+        className={`page-root board-surface is-${transition} ${editing ? "is-editing" : ""}`.trim()}
         data-board-transition={transition}
         data-widget-id={root.id}
         data-border={rootStyle.border === "none" ? undefined : rootStyle.border}

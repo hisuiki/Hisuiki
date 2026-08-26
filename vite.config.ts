@@ -5,7 +5,7 @@ import react from "@vitejs/plugin-react";
 // proxy below so the browser keeps that same-origin contract while Express runs on its own port.
 const devApiTarget = process.env.VITE_DEV_API_TARGET ?? "http://localhost:5066";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   server: {
     port: 5173,
@@ -32,6 +32,9 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    sourcemap: true,
+    // Production bundles are public artifacts. Keeping source maps beside them exposes the
+    // original TypeScript and makes it much easier to reconstruct private implementation details.
+    // Non-production builds retain maps for local diagnostics.
+    sourcemap: mode !== "production",
   },
-});
+}));

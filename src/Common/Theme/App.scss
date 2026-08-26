@@ -1541,18 +1541,46 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 /* Layers use the same tree and selection as the canvas. Indentation is a custom property so nested
    containers can be arbitrarily deep without one selector per depth. */
 .inspector-layers { min-width: 0; }
+.inspector-layer-hint {
+  margin: 0 0 0.55em;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
 .inspector-layer-list { margin: 0; padding: 0; list-style: none; }
 .inspector-layer-row {
+  position: relative;
   display: grid;
   grid-template-columns: 1.6em minmax(0, 1fr);
   align-items: stretch;
   min-width: 0;
   padding-inline-start: calc(var(--layer-depth, 0) * 1em);
   border-left: 2px solid transparent;
+  transition: background-color 0.1s ease-in-out, opacity 0.1s ease-in-out;
 }
 .inspector-layer-row:hover { background: var(--color-surface-veil); }
 .inspector-layer-row.is-selected { background: var(--color-accent-soft); }
 .inspector-layer-row.is-primary { border-left-color: var(--color-accent-strong); }
+.inspector-layer-row.is-dragging { opacity: 0.42; }
+.inspector-layer-row.is-drop-inside {
+  background: var(--color-accent-soft);
+  outline: 1px solid var(--color-accent-strong);
+  outline-offset: -1px;
+}
+.inspector-layer-row.is-drop-before::before,
+.inspector-layer-row.is-drop-after::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  left: calc(var(--layer-depth, 0) * 1em + 0.25em);
+  right: 0.25em;
+  height: 2px;
+  pointer-events: none;
+  background: var(--color-accent-strong);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-surface) 65%, transparent);
+}
+.inspector-layer-row.is-drop-before::before { top: -1px; }
+.inspector-layer-row.is-drop-after::after { bottom: -1px; }
 .inspector-layer-caret,
 .inspector-layer-select {
   min-width: 0;
@@ -1574,7 +1602,18 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
   text-align: left;
 }
 .inspector-layer-select .widget-icon { width: 1.35em; height: 1.35em; flex: 0 0 auto; color: var(--color-text-muted); }
-.inspector-layer-select > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inspector-layer-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inspector-layer-select .inspector-layer-grip {
+  display: grid;
+  flex: 0 0 auto;
+  width: 1.2em;
+  margin-inline-start: auto;
+  color: var(--color-text-faint);
+  opacity: 0;
+  transition: opacity 0.1s ease-in-out;
+}
+.inspector-layer-row:hover .inspector-layer-grip,
+.inspector-layer-row.is-dragging .inspector-layer-grip { opacity: 1; }
 .inspector-layer-row.is-selected .inspector-layer-select { color: var(--color-text); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2006,7 +2045,12 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
     color-mix(in srgb, var(--color-surface) 84%, transparent),
     transparent
   );
+  opacity: 1;
+  transition: opacity 0.15s ease-in-out;
 }
+/* Editing already draws every boundary. The decorative reading shadow otherwise becomes a heavy
+   dark stripe behind the nested widget outlines and makes transparent containers look filled. */
+.page-root.is-editing::before { opacity: 0; }
 .page-root > .widget-board {
   position: relative;
   z-index: 1;

@@ -9,7 +9,8 @@ Everything the site runs on, in the `hisuiki` project.
 | `google_cloud_run_v2_service.web`         | `hisuiki.com` — the built React frontend                          |
 | `google_cloud_run_v2_service.api`         | `api.hisuiki.com` — Express `/api`                                |
 | Global external ALB + Cloud CDN           | Routes all three hostnames, with one managed certificate          |
-| Secret Manager                            | Database URL, session signing secret, both OAuth client secrets   |
+| PgBouncer API sidecar                     | Transaction-pools API traffic before it reaches Cloud SQL         |
+| Secret Manager                            | Direct/pooled database URLs, database password, auth secrets       |
 | Artifact Registry + Workload Identity     | Lets GitHub Actions build and deploy without a service-account key |
 
 Host routing:
@@ -53,12 +54,12 @@ Then, in order:
    ```
 
    Register the callbacks printed by `terraform output oauth_callback_urls` with each provider.
-4. **Run the database migration**, through the Cloud SQL proxy against
-   `terraform output database_instance_connection_name`:
+4. **Run the database migration** with the migration job. It receives `DIRECT_DATABASE_URL` and
+   deliberately bypasses PgBouncer, because Prisma schema operations are not safe through a
+   transaction pool:
 
    ```
-   export DATABASE_URL=...
-   pnpm --filter hisuiki-server migrate
+   gcloud run jobs execute hisuiki-migrate --region northamerica-northeast1 --project hisuiki --wait
    ```
 5. **Set the repository variables** the deploy workflow reads: `GCP_PROJECT_ID`, `GCP_REGION`,
    `GCP_WEB_SERVICE`, `GCP_API_SERVICE`, `GCP_URL_MAP`, `API_BASE_URL`, `ASSET_BASE_URL`, plus the
@@ -67,3 +68,10 @@ Then, in order:
 
 Both Cloud Run services start on a placeholder image (`var.app_image`) and are only real once the
 deploy workflow has pushed one. Terraform ignores the image field from then on.
+
+The API runs that same release image a second time as a PgBouncer sidecar. It accepts up to 100
+client connections but opens four regular and one reserve backend connection per Cloud Run
+instance. With the API capped at four instances, ordinary traffic is therefore bounded to 16
+Cloud SQL sessions (20 while every reserve slot is in use) instead of scaling one-for-one with
+incoming application connections. PgBouncer uses transaction mode with prepared-statement support;
+the migration job always keeps its direct socket connection.

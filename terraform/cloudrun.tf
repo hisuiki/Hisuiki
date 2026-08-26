@@ -36,6 +36,7 @@ resource "google_cloud_run_v2_service" "web" {
     }
 
     containers {
+      name  = "app"
       image = var.app_image
 
       env {
@@ -95,6 +96,8 @@ resource "google_project_iam_member" "api_cloudsql_client" {
 locals {
   api_secrets = {
     database_url         = google_secret_manager_secret.database_url.id
+    database_pooled_url  = google_secret_manager_secret.database_pooled_url.id
+    database_password    = google_secret_manager_secret.database_password.id
     better_auth_secret   = google_secret_manager_secret.better_auth_secret.id
     github_client_secret = google_secret_manager_secret.github_client_secret.id
     google_client_secret = google_secret_manager_secret.google_client_secret.id
@@ -120,6 +123,10 @@ resource "google_cloud_run_v2_service" "api" {
   # service, and a secret with no versions fails that outright.
   depends_on = [
     google_project_service.required,
+    google_secret_manager_secret_iam_member.api,
+    google_secret_manager_secret_version.database_pooled_url,
+    google_secret_manager_secret_version.database_password,
+    google_secret_manager_secret_version.better_auth_secret,
     google_secret_manager_secret_version.github_client_secret_placeholder,
     google_secret_manager_secret_version.google_client_secret_placeholder,
   ]
@@ -133,7 +140,13 @@ resource "google_cloud_run_v2_service" "api" {
     }
 
     containers {
-      image = var.app_image
+      name       = "app"
+      image      = var.app_image
+      depends_on = ["pgbouncer"]
+
+      ports {
+        container_port = 8080
+      }
 
       env {
         name  = "APP_ROLE"
@@ -193,7 +206,7 @@ resource "google_cloud_run_v2_service" "api" {
 
       dynamic "env" {
         for_each = {
-          DATABASE_URL         = google_secret_manager_secret.database_url.secret_id
+          DATABASE_URL         = google_secret_manager_secret.database_pooled_url.secret_id
           BETTER_AUTH_SECRET   = google_secret_manager_secret.better_auth_secret.secret_id
           GITHUB_CLIENT_SECRET = google_secret_manager_secret.github_client_secret.secret_id
           GOOGLE_CLIENT_SECRET = google_secret_manager_secret.google_client_secret.secret_id
@@ -211,15 +224,79 @@ resource "google_cloud_run_v2_service" "api" {
         }
       }
 
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "512Mi"
+        }
+      }
+    }
+
+    containers {
+      name    = "pgbouncer"
+      image   = var.app_image
+      command = ["/usr/local/bin/PgBouncerEntrypoint.sh"]
+
+      env {
+        name  = "PGBOUNCER_DATABASE_HOST"
+        value = "/cloudsql/${google_sql_database_instance.main.connection_name}"
+      }
+
+      env {
+        name  = "PGBOUNCER_DATABASE_NAME"
+        value = google_sql_database.app.name
+      }
+
+      env {
+        name  = "PGBOUNCER_DATABASE_USER"
+        value = google_sql_user.app.name
+      }
+
+      env {
+        name = "PGBOUNCER_DATABASE_PASSWORD"
+
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.database_password.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "PGBOUNCER_DEFAULT_POOL_SIZE"
+        value = "4"
+      }
+
+      env {
+        name  = "PGBOUNCER_RESERVE_POOL_SIZE"
+        value = "1"
+      }
+
+      env {
+        name  = "PGBOUNCER_MAX_CLIENT_CONN"
+        value = "100"
+      }
+
       volume_mounts {
         name       = "cloudsql"
         mount_path = "/cloudsql"
       }
 
+      startup_probe {
+        failure_threshold = 10
+        period_seconds    = 2
+        timeout_seconds   = 1
+
+        tcp_socket {
+          port = 6432
+        }
+      }
+
       resources {
         limits = {
-          cpu    = "1"
-          memory = "512Mi"
+          cpu    = "0.25"
+          memory = "128Mi"
         }
       }
     }
@@ -249,6 +326,7 @@ resource "google_cloud_run_v2_service" "api" {
   lifecycle {
     ignore_changes = [
       template[0].containers[0].image,
+      template[0].containers[1].image,
       client,
       client_version,
     ]
@@ -271,7 +349,11 @@ resource "google_cloud_run_v2_job" "migrate" {
 
   deletion_protection = false
 
-  depends_on = [google_project_service.required]
+  depends_on = [
+    google_project_service.required,
+    google_secret_manager_secret_iam_member.api,
+    google_secret_manager_secret_version.database_url,
+  ]
 
   template {
     template {
@@ -284,7 +366,7 @@ resource "google_cloud_run_v2_job" "migrate" {
         args    = ["exec", "prisma", "migrate", "deploy"]
 
         env {
-          name = "DATABASE_URL"
+          name = "DIRECT_DATABASE_URL"
           value_source {
             secret_key_ref {
               secret  = google_secret_manager_secret.database_url.secret_id

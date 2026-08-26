@@ -75,6 +75,9 @@ jobs:
       - name: Deploy API to Cloud Run
         run: |
           gcloud run deploy ${{ vars.GCP_API_SERVICE }} \
+            --container app \
+            --image "${{ steps.image.outputs.image }}" \
+            --container pgbouncer \
             --image "${{ steps.image.outputs.image }}" \
             --region "${{ vars.GCP_REGION }}" \
             --quiet
@@ -82,6 +85,7 @@ jobs:
       - name: Deploy frontend to Cloud Run
         run: |
           gcloud run deploy ${{ vars.GCP_WEB_SERVICE }} \
+            --container app \
             --image "${{ steps.image.outputs.image }}" \
             --region "${{ vars.GCP_REGION }}" \
             --quiet

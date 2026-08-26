@@ -186,7 +186,9 @@
     },
     "layers": {
       "expand": "Expand layer",
-      "collapse": "Collapse layer"
+      "collapse": "Collapse layer",
+      "drag": "Drag to reorder or move into a container",
+      "hint": "Drag layers to reorder or nest them. Right-click a layer for more actions."
     },
     "arrange": {
       "left": "Align left",
@@ -268,6 +270,8 @@
   "menu": {
     "inspect": "Inspect",
     "duplicate": "Duplicate",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
     "moveOut": "Move out of container",
     "wrap": "Wrap into",
     "wrapMany": "Wrap {{count}} into"

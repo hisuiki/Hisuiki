@@ -77,9 +77,8 @@ resource "google_sql_user" "app" {
 }
 
 # ── Secrets ───────────────────────────────────────────────────────────────────────────────────
-# The API reads DATABASE_URL as one string, so the assembled URL is the secret rather than the
-# password alone. That also keeps the socket path out of the Cloud Run environment, where it would
-# otherwise have to be templated alongside a separate password reference.
+# The migration job reads the direct URL while the API reads the pooled URL. Keeping them separate
+# prevents Prisma schema commands from accidentally passing through PgBouncer's transaction pool.
 
 resource "google_secret_manager_secret" "database_url" {
   secret_id = "database-url"
@@ -103,6 +102,44 @@ resource "google_secret_manager_secret_version" "database_url" {
     google_sql_database.app.name,
     google_sql_database_instance.main.connection_name,
   )
+}
+
+resource "google_secret_manager_secret" "database_pooled_url" {
+  secret_id = "database-pooled-url"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_secret_manager_secret_version" "database_pooled_url" {
+  secret = google_secret_manager_secret.database_pooled_url.id
+
+  # Containers in one Cloud Run instance share localhost. PgBouncer listens here and keeps the
+  # number of real Cloud SQL sessions bounded independently of client connection bursts.
+  secret_data = format(
+    "postgresql://%s:%s@127.0.0.1:6432/%s",
+    google_sql_user.app.name,
+    urlencode(random_password.db.result),
+    google_sql_database.app.name,
+  )
+}
+
+resource "google_secret_manager_secret" "database_password" {
+  secret_id = "database-password"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_secret_manager_secret_version" "database_password" {
+  secret      = google_secret_manager_secret.database_password.id
+  secret_data = random_password.db.result
 }
 
 # Signs session cookies. Rotating it signs everyone out, which is the intended blast radius.

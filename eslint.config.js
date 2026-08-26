@@ -1,13 +1,19 @@
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
-import reactPlugin from "eslint-plugin-react";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 import globals from "globals";
 
 export default tseslint.config(
   {
-    // scripts/ runs under node, not in the browser, and is not part of the app bundle.
-    ignores: ["dist", "build", "node_modules", "server/dist", "scripts"],
+    // Generated output, installed dependencies and local service data are never source code.
+    ignores: [
+      "**/dist/**",
+      "**/build/**",
+      "**/coverage/**",
+      "**/node_modules/**",
+      ".local/**",
+      "server/src/generated/**",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -22,10 +28,15 @@ export default tseslint.config(
     },
   },
   {
-    // The API is Node-only: no browser globals, no React.
-    files: ["server/**/*.ts"],
+    // Tooling, tests and the API run in Node rather than in the browser.
+    files: [
+      "*.{js,mjs,cjs}",
+      "vite.config.ts",
+      "scripts/**/*.{js,mjs,cjs,ts}",
+      "server/**/*.ts",
+    ],
     languageOptions: {
-      ecmaVersion: 2022,
+      ecmaVersion: "latest",
       globals: {
         ...globals.node,
       },
@@ -34,26 +45,19 @@ export default tseslint.config(
   {
     files: ["src/**/*.{ts,tsx}"],
     languageOptions: {
-      ecmaVersion: 2022,
+      ecmaVersion: "latest",
       globals: {
         ...globals.browser,
-        ...globals.node,
       },
     },
     plugins: {
-      react: reactPlugin,
       "react-hooks": reactHooksPlugin,
     },
     rules: {
-      ...reactPlugin.configs.recommended.rules,
-      ...reactHooksPlugin.configs.recommended.rules,
-      "react/react-in-jsx-scope": "off",
-      "react/prop-types": "off",
+      // TypeScript owns JSX and component prop validation. eslint-plugin-react 7.x still calls an
+      // API removed by ESLint 10; the Hooks plugin below is the React-specific correctness layer.
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
     },
-    settings: {
-      react: {
-        version: "19.0",
-      },
-    },
-  }
+  },
 );

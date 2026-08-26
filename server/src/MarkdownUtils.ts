@@ -77,6 +77,8 @@ function sanitizeComponentTitle(title: string): string {
   return title
     .replace(/[<>]/g, "")
     .replace(/--+/g, "—")
+    // These are intentionally literal C0/DEL ranges, removed before the title enters a sentinel.
+    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001f\u007f]/g, " ")
     .trim()
     .slice(0, 200);
