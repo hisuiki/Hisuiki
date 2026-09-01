@@ -19,8 +19,9 @@ resource "google_service_account" "web" {
 }
 
 resource "google_cloud_run_v2_service" "web" {
-  name     = var.web_service_name
-  location = var.region
+  name                 = var.web_service_name
+  location             = var.region
+  invoker_iam_disabled = true
 
   deletion_protection = false
   ingress             = "INGRESS_TRAFFIC_ALL"
@@ -110,8 +111,9 @@ resource "google_secret_manager_secret_iam_member" "api" {
 }
 
 resource "google_cloud_run_v2_service" "api" {
-  name     = var.api_service_name
-  location = var.region
+  name                 = var.api_service_name
+  location             = var.region
+  invoker_iam_disabled = true
 
   deletion_protection = false
   ingress             = "INGRESS_TRAFFIC_ALL"
@@ -242,17 +244,6 @@ resource "google_cloud_run_v2_service" "api" {
   }
 }
 
-# Both services are public. Authorization is the application's own session check, not Cloud Run IAM.
-resource "google_cloud_run_v2_service_iam_member" "web_public" {
-  name     = google_cloud_run_v2_service.web.name
-  location = google_cloud_run_v2_service.web.location
-  role     = "roles/run.invoker"
-  member   = "allUsers"
-}
-
-resource "google_cloud_run_v2_service_iam_member" "api_public" {
-  name     = google_cloud_run_v2_service.api.name
-  location = google_cloud_run_v2_service.api.location
-  role     = "roles/run.invoker"
-  member   = "allUsers"
-}
+# Both services are public through their invoker_iam_disabled setting. Disabling the check is the
+# Cloud Run-recommended mechanism and continues to work when organization policy rejects allUsers
+# IAM bindings. Authorization for private API operations remains the application's own session check.
