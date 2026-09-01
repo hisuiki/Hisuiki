@@ -25,6 +25,23 @@ export const auth = betterAuth({
     requireEmailVerification: false,
   },
 
+  user: {
+    /**
+     * Local accounts are intentionally usable without email delivery, but that means they have not
+     * proved ownership of their address. Never let that path claim an address which carries site-
+     * owner authority; OAuth providers return a provider-verified address instead.
+     */
+    validateUserInfo: ({ user, source }) => {
+      const email = typeof user.email === "string" ? user.email.toLowerCase() : "";
+      if (source.method === "email-password" && config.auth.ownerEmails.includes(email)) {
+        return {
+          error: "owner_email_requires_social_sign_in",
+          errorDescription: "Site-owner addresses must use GitHub or Google sign-in.",
+        };
+      }
+    },
+  },
+
   // An incompletely provisioned provider is omitted instead of turning a button click into a 500.
   // /api/auth/providers exposes the same flags so the sign-in page can label it unavailable.
   socialProviders: {
