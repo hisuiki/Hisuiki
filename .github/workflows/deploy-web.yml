@@ -11,6 +11,17 @@ on:
     paths-ignore:
       - "terraform/**"
   workflow_dispatch:
+    inputs:
+      sync_github_oauth:
+        description: Copy the stored GitHub OAuth credential into Google Secret Manager
+        required: false
+        default: false
+        type: boolean
+      sync_google_oauth:
+        description: Copy the stored Google OAuth credential into Google Secret Manager
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   id-token: write
@@ -49,50 +60,63 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
-
-      # API_BASE_URL is baked into the bundle at build time, so the frontend has to be told the
-      # API's hostname here — it can no longer assume its own origin.
-      - name: Build and push image
-        id: image
+      # Repository secrets are write-only, so this manual path is the safe bridge when an OAuth
+      # credential already exists in Actions but Secret Manager needs a new version. The deployer
+      # may add versions to these two secrets; it cannot read them back or change other secrets.
+      - name: Sync OAuth credentials
+        if: inputs.sync_github_oauth || inputs.sync_google_oauth
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_API_SERVICE: ${{ vars.GCP_API_SERVICE }}
+          GITHUB_OAUTH_CLIENT_ID: ${{ secrets.GH_OAUTH_CLIENT_ID }}
+          GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.GH_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
         run: |
-          IMAGE="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/containers/hisuiki:${{ github.sha }}"
-          docker build \
-            --build-arg VITE_API_BASE_URL="${{ vars.API_BASE_URL }}" \
-            --build-arg VITE_ASSET_BASE_URL="${{ vars.ASSET_BASE_URL }}" \
-            -f server/Dockerfile \
-            -t "$IMAGE" \
-            .
-          docker push "$IMAGE"
-          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+          if [ "${{ inputs.sync_github_oauth }}" = "true" ]; then
+            if [ -z "$GITHUB_OAUTH_CLIENT_ID" ] || [ -z "$GITHUB_OAUTH_CLIENT_SECRET" ]; then
+              echo "GitHub OAuth repository secrets are not configured."
+              exit 1
+            fi
+            printf '%s' "$GITHUB_OAUTH_CLIENT_SECRET" | \
+              gcloud secrets versions add github-oauth-client-secret \
+                --data-file=- --project="$GCP_PROJECT_ID"
+            gcloud run services update "$GCP_API_SERVICE" \
+              --region="$GCP_REGION" \
+              --update-env-vars="GITHUB_CLIENT_ID=$GITHUB_OAUTH_CLIENT_ID" \
+              --quiet
+          fi
 
-      # Image only, to both services. Terraform owns each service's environment and runtime
-      # identity, including the APP_ROLE that decides which half it serves.
-      #
-      # The API goes first: a frontend revision calling an API that has not been updated yet is the
-      # recoverable order, whereas the reverse can serve a bundle expecting routes that do not exist.
-      - name: Deploy API to Cloud Run
-        run: |
-          gcloud run deploy ${{ vars.GCP_API_SERVICE }} \
-            --image "${{ steps.image.outputs.image }}" \
-            --region "${{ vars.GCP_REGION }}" \
-            --quiet
+          if [ "${{ inputs.sync_google_oauth }}" = "true" ]; then
+            if [ -z "$GOOGLE_OAUTH_CLIENT_ID" ] || [ -z "$GOOGLE_OAUTH_CLIENT_SECRET" ]; then
+              echo "Google OAuth repository secrets are not configured."
+              exit 1
+            fi
+            printf '%s' "$GOOGLE_OAUTH_CLIENT_SECRET" | \
+              gcloud secrets versions add google-oauth-client-secret \
+                --data-file=- --project="$GCP_PROJECT_ID"
+            gcloud run services update "$GCP_API_SERVICE" \
+              --region="$GCP_REGION" \
+              --update-env-vars="GOOGLE_CLIENT_ID=$GOOGLE_OAUTH_CLIENT_ID" \
+              --quiet
+          fi
 
-      - name: Deploy frontend to Cloud Run
-        run: |
-          gcloud run deploy ${{ vars.GCP_WEB_SERVICE }} \
-            --image "${{ steps.image.outputs.image }}" \
-            --region "${{ vars.GCP_REGION }}" \
-            --quiet
-
-      # The frontend backend caches on origin headers, so hashed assets stay immutable and the SPA
-      # shell is revalidated. Invalidating all paths makes a new shell visible immediately. The API
-      # has no CDN in front of it at all, so nothing there needs purging.
-      - name: Invalidate CDN cache
-        run: |
-          gcloud compute url-maps invalidate-cdn-cache ${{ vars.GCP_URL_MAP }} \
-            --path "/*" --async
+      # Keep local and automated deployments on one implementation. The script builds the bundle
+      # with these public origins, pushes one image, resolves it to an immutable digest, deploys the
+      # API before the frontend, and invalidates the frontend CDN cache.
+      - name: Build and deploy image
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_API_SERVICE: ${{ vars.GCP_API_SERVICE }}
+          GCP_WEB_SERVICE: ${{ vars.GCP_WEB_SERVICE }}
+          GCP_URL_MAP: ${{ vars.GCP_URL_MAP }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          ASSET_BASE_URL: ${{ vars.ASSET_BASE_URL }}
+        # The push-triggered build bump creates a new local commit, so tag the image with HEAD rather
+        # than github.sha (which still names the commit that triggered the workflow).
+        run: scripts/build-and-deploy-gcp.sh --tag "$(git rev-parse HEAD)"
 
       # Skipped rather than failed when the credentials are absent: the zone moved with the domain,
       # and a deploy that succeeded everywhere else should not be reported as broken because the

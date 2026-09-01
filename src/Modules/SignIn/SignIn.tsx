@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import InfoBubble from "../../Common/Components/InfoBubble/InfoBubble";
 import { authClient } from "../../Services/authClient";
 import { RETURN_PARAM, useAuth } from "../../Services/auth";
 import { Link, useRouter } from "../../Services/router";
+import { apiUrl } from "../../Services/config";
 
 export interface SignInProps {
   isJapanese: boolean;
@@ -16,6 +17,8 @@ const TEXT = {
     toggleToSignIn: "Already have an account?",
     withGithub: "Continue with GitHub",
     withGoogle: "Continue with Google",
+    githubUnavailable: "GitHub sign-in is unavailable",
+    googleUnavailable: "Google sign-in is unavailable",
     or: "or",
     name: "Name",
     email: "Email",
@@ -34,6 +37,8 @@ const TEXT = {
     toggleToSignIn: "すでにアカウントをお持ちの方",
     withGithub: "GitHub で続ける",
     withGoogle: "Google で続ける",
+    githubUnavailable: "GitHub サインインは利用できません",
+    googleUnavailable: "Google サインインは利用できません",
     or: "または",
     name: "名前",
     email: "メールアドレス",
@@ -66,16 +71,46 @@ export default function SignIn({ isJapanese }: SignInProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [providers, setProviders] = useState({ github: true, google: true });
+  const [error, setError] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get("error");
+    if (!oauthError) return null;
+    return params.get("error_description") || `Social sign-in failed (${oauthError}).`;
+  });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch(apiUrl("/api/auth/providers"), { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return (await response.json()) as { github?: boolean; google?: boolean };
+      })
+      .then((available) =>
+        setProviders({ github: available.github === true, google: available.google === true })
+      )
+      .catch((failure: unknown) => {
+        if (!(failure instanceof DOMException && failure.name === "AbortError")) {
+          // Leave both controls enabled when this optional discovery call fails. The auth endpoint
+          // remains authoritative and will return its own actionable error.
+        }
+      });
+    return () => controller.abort();
+  }, []);
 
   const social = async (provider: "github" | "google") => {
     setBusy(true);
     setError(null);
 
-    // A full redirect out to the provider and back; callbackURL is where it lands afterwards.
+    // Better Auth resolves a relative callback against the API host. Production splits the web and
+    // API origins, so both success and failure targets must explicitly name the browser's origin.
+    const callbackURL = new URL(returnPath(), window.location.origin).toString();
+    const errorURL = new URL(isJapanese ? "/signin/ja" : "/signin", window.location.origin);
+    errorURL.searchParams.set(RETURN_PARAM, returnPath());
     const { error: failure } = await authClient.signIn.social({
       provider,
-      callbackURL: returnPath(),
+      callbackURL,
+      errorCallbackURL: errorURL.toString(),
     });
 
     if (failure) {
@@ -138,17 +173,17 @@ export default function SignIn({ isJapanese }: SignInProps) {
           type="button"
           className="editor-btn editor-btn-cancel signin-provider"
           onClick={() => void social("github")}
-          disabled={busy}
+          disabled={busy || !providers.github}
         >
-          {text.withGithub}
+          {providers.github ? text.withGithub : text.githubUnavailable}
         </button>
         <button
           type="button"
           className="editor-btn editor-btn-cancel signin-provider"
           onClick={() => void social("google")}
-          disabled={busy}
+          disabled={busy || !providers.google}
         >
-          {text.withGoogle}
+          {providers.google ? text.withGoogle : text.googleUnavailable}
         </button>
       </div>
 

@@ -62,6 +62,20 @@ resource "google_project_iam_member" "deployer_run" {
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+# A manually dispatched deployment may promote an OAuth credential already held by GitHub Actions
+# into Secret Manager. Version-adder cannot read the current value back and is scoped to these two
+# secrets rather than every secret in the project.
+resource "google_secret_manager_secret_iam_member" "deployer_oauth_version" {
+  for_each = {
+    github = google_secret_manager_secret.github_client_secret.id
+    google = google_secret_manager_secret.google_client_secret.id
+  }
+
+  secret_id = each.value
+  role      = "roles/secretmanager.secretVersionAdder"
+  member    = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 # A Cloud Run deploy runs the revision as a service account, which the deployer must be allowed to
 # act as — separately for each, since the two services have distinct identities.
 resource "google_service_account_iam_member" "deployer_act_as_web" {

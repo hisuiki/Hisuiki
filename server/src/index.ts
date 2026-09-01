@@ -55,19 +55,36 @@ app.use("/api", (_req, res, next) => {
  * and no bucket — so a static import crash-loops it on boot.
  */
 if (config.servesApi) {
-  const [{ toNodeHandler }, { auth }, { pagesRouter }, { photosRouter }, { wallpaperRouter }] =
+  const [
+    { toNodeHandler },
+    { auth },
+    { adminRouter },
+    { pagesRouter },
+    { photosRouter },
+    { wallpaperRouter },
+  ] =
     await Promise.all([
       import("better-auth/node"),
       import("./services/auth.js"),
+      import("./routes/admin.js"),
       import("./routes/pages.js"),
       import("./routes/photos.js"),
       import("./routes/wallpaper.js"),
     ]);
 
+  /** Public provider availability; never includes the ids or secrets themselves. */
+  app.get("/api/auth/providers", (_req, res) => {
+    res.json({
+      github: config.auth.github.configured,
+      google: config.auth.google.configured,
+    });
+  });
+
   app.all("/api/auth/*splat", toNodeHandler(auth));
 
   app.use(express.json({ limit: "1mb" }));
 
+  app.use("/api/admin", adminRouter);
   app.use("/api/pages", pagesRouter);
   // No cache override: like and comment counts change per request and must never be shared-cached.
   app.use("/api/photos", photosRouter);
@@ -137,5 +154,11 @@ app.listen(config.port, () => {
   }
   if (!config.auth.secret) {
     console.warn("BETTER_AUTH_SECRET is not set — sessions cannot be signed.");
+  }
+  if (!config.auth.github.configured) {
+    console.warn("GitHub sign-in is disabled — configure GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.");
+  }
+  if (!config.auth.google.configured) {
+    console.warn("Google sign-in is disabled — configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.");
   }
 });

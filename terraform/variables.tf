@@ -148,7 +148,7 @@ variable "site_owner_emails" {
     the address rather than the provider, so the same person moderates whichever way they signed in.
   EOT
   type        = string
-  default     = ""
+  default     = "hisuiki@hisuiki.com"
 }
 
 variable "github_repository" {
@@ -161,7 +161,7 @@ variable "github_repository" {
     "the given credential is rejected by the attribute condition".
   EOT
   type        = string
-  default     = "powerm1nt/Hisuiki"
+  default     = "hisuiki/Hisuiki"
 }
 
 variable "wildcard_cert_active" {

@@ -94,7 +94,13 @@ export interface SignInRoute {
   japanese: boolean;
 }
 
-export type Route = PageRoute | PhotosRoute | SignInRoute;
+/** Site-owner control panel. */
+export interface AdminRoute {
+  kind: "admin";
+  japanese: boolean;
+}
+
+export type Route = PageRoute | PhotosRoute | SignInRoute | AdminRoute;
 
 /** Ids are minted by the API as 12 hex characters; anything else is not a photo. */
 const PHOTO_ID = /^[0-9a-f]{12}$/;
@@ -107,6 +113,7 @@ const PHOTO_ID = /^[0-9a-f]{12}$/;
  *   /photos            → the gallery          /photos/ja           → the gallery, in Japanese
  *   /photos/:id        → one photo            /photos/:id/ja       → one photo, in Japanese
  *   /signin            → sign in              /signin/ja           → sign in, in Japanese
+ *   /admin             → control panel         /admin/ja            → control panel, in Japanese
  *
  * Returns null for anything else, which renders the not-found page.
  */
@@ -133,6 +140,10 @@ export function resolveRoute(pathname: string): Route | null {
 
   if (path[0] === "signin" && path.length === 1) {
     return { kind: "signin", japanese };
+  }
+
+  if (path[0] === "admin" && path.length === 1) {
+    return { kind: "admin", japanese };
   }
 
   if (path[0] === "photos") {

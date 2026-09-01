@@ -1,5 +1,6 @@
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { authClient } from "./authClient";
+import { apiUrl } from "./config";
 import type { AuthUser } from "./types";
 
 /**
@@ -13,6 +14,8 @@ import type { AuthUser } from "./types";
 interface AuthValue {
   user: AuthUser | null;
   isSignedIn: boolean;
+  /** SITE_OWNER_EMAILS membership, resolved by the API rather than trusted from browser state. */
+  isAdmin: boolean;
   /** True until the session request has settled, so the UI can avoid flashing a signed-out state. */
   initializing: boolean;
   /** Sends the browser to the sign-in page, returning here afterwards. */
@@ -23,6 +26,7 @@ interface AuthValue {
 const AuthContext = createContext<AuthValue>({
   user: null,
   isSignedIn: false,
+  isAdmin: false,
   initializing: true,
   redirectToLogin: () => {},
   signOut: async () => {},
@@ -39,6 +43,30 @@ export const signInHref = (japanese: boolean): string => {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data, isPending } = authClient.useSession();
+  const [adminUserId, setAdminUserId] = useState<string | null>(null);
+  const sessionUserId = data?.user?.id;
+  const isAdmin = Boolean(sessionUserId && adminUserId === sessionUserId);
+
+  useEffect(() => {
+    if (!sessionUserId) return;
+
+    const controller = new AbortController();
+    void fetch(apiUrl("/api/admin/status"), {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return false;
+        const result = (await response.json()) as { isAdmin?: boolean };
+        return result.isAdmin === true;
+      })
+      .then((allowed) => setAdminUserId(allowed ? sessionUserId : null))
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) setAdminUserId(null);
+      });
+
+    return () => controller.abort();
+  }, [sessionUserId]);
 
   const value = useMemo<AuthValue>(() => {
     const sessionUser = data?.user;
@@ -53,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         : null,
       isSignedIn: sessionUser !== undefined && sessionUser !== null,
+      isAdmin,
       initializing: isPending,
       // A full page navigation rather than a client-side one: coming back from a social provider is
       // a fresh document load anyway, so the two paths behave the same.
@@ -63,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await authClient.signOut();
       },
     };
-  }, [data, isPending]);
+  }, [data, isAdmin, isPending]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
