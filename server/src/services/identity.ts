@@ -33,8 +33,12 @@ export async function getViewer(req: Request): Promise<Viewer | undefined> {
  * providers agree on.
  */
 export function isSiteOwner(viewer: Viewer | undefined): boolean {
-  if (!viewer?.email) return false;
-  return config.auth.ownerEmails.includes(viewer.email.toLowerCase());
+  return viewer !== undefined && isSiteOwnerEmail(viewer.email);
+}
+
+/** Same ownership check for stored users, where constructing a request Viewer would be misleading. */
+export function isSiteOwnerEmail(email: string): boolean {
+  return Boolean(email) && config.auth.ownerEmails.includes(email.toLowerCase());
 }
 
 /** The display name to attribute content to, falling back to the local part of their address. */

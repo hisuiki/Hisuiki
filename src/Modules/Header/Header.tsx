@@ -1,6 +1,7 @@
 import HeadlineLogo from "../../Common/Components/HeadlineLogo/HeadlineLogo";
 import ExternalLink from "../../Common/Components/ExternalLink/ExternalLink";
 import { Link, useRouter } from "../../Services/router";
+import { useAuth } from "../../Services/auth";
 
 export interface HeaderProps {
   /** Whether the page currently shown is the Japanese edition; drives the nav labels and links. */
@@ -10,14 +11,17 @@ export interface HeaderProps {
 /** A horizontally-scrollable row of section labels, with the avatar tiled at the right end. */
 export default function Header({ isJapanese }: HeaderProps) {
   const { pathname } = useRouter();
+  const { isAdmin } = useAuth();
 
   const isHomeActive = pathname === "/" || pathname === "/ja";
   const isBlogActive = pathname.toLowerCase().startsWith("/blog");
   const isPhotosActive = pathname.toLowerCase().startsWith("/photos");
+  const isAdminActive = pathname.toLowerCase().startsWith("/admin");
 
   const homeHref = isJapanese ? "/ja" : "/";
   const blogHref = isJapanese ? "/blog/ja" : "/blog";
   const photosHref = isJapanese ? "/photos/ja" : "/photos";
+  const adminHref = isJapanese ? "/admin/ja" : "/admin";
 
   return (
     <header className="metro-header">
@@ -35,6 +39,14 @@ export default function Header({ isJapanese }: HeaderProps) {
           >
             {isJapanese ? "フォト" : "Photos"}
           </Link>
+          {isAdmin && (
+            <Link
+              href={adminHref}
+              className={`pivot-item ${isAdminActive ? "is-active" : ""}`.trim()}
+            >
+              {isJapanese ? "管理" : "Admin"}
+            </Link>
+          )}
           <ExternalLink
             href="https://github.com/powerm1nt"
             label="GitHub"

@@ -10,6 +10,19 @@ const prefix = env("GCS_PREFIX", "static").replace(/^\/+|\/+$/g, "");
 
 const cdnBaseUrl = env("CDN_BASE_URL").replace(/\/+$/, "");
 
+/** Terraform creates placeholder secret versions so Cloud Run can start before OAuth setup. */
+const oauthProvider = (clientIdName: string, clientSecretName: string) => {
+  const clientId = env(clientIdName);
+  const clientSecret = env(clientSecretName);
+  return {
+    clientId,
+    clientSecret,
+    configured:
+      Boolean(clientId && clientSecret) &&
+      !clientSecret.startsWith("placeholder-replace-with-real-"),
+  } as const;
+};
+
 /**
  * Which half of the application this process serves. The frontend and the API run as separate Cloud
  * Run services on separate hostnames, from one image: "web" mounts the built React bundle, "api"
@@ -72,15 +85,9 @@ export const config = {
      */
     cookieDomain: env("AUTH_COOKIE_DOMAIN"),
 
-    github: {
-      clientId: env("GITHUB_CLIENT_ID"),
-      clientSecret: env("GITHUB_CLIENT_SECRET"),
-    },
+    github: oauthProvider("GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"),
 
-    google: {
-      clientId: env("GOOGLE_CLIENT_ID"),
-      clientSecret: env("GOOGLE_CLIENT_SECRET"),
-    },
+    google: oauthProvider("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"),
 
     /** Moderators, by email address, so the role is independent of which provider they signed in with. */
     ownerEmails: env("SITE_OWNER_EMAILS")

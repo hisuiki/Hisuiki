@@ -25,15 +25,25 @@ export const auth = betterAuth({
     requireEmailVerification: false,
   },
 
+  // An incompletely provisioned provider is omitted instead of turning a button click into a 500.
+  // /api/auth/providers exposes the same flags so the sign-in page can label it unavailable.
   socialProviders: {
-    github: {
-      clientId: config.auth.github.clientId,
-      clientSecret: config.auth.github.clientSecret,
-    },
-    google: {
-      clientId: config.auth.google.clientId,
-      clientSecret: config.auth.google.clientSecret,
-    },
+    ...(config.auth.github.configured
+      ? {
+          github: {
+            clientId: config.auth.github.clientId,
+            clientSecret: config.auth.github.clientSecret,
+          },
+        }
+      : {}),
+    ...(config.auth.google.configured
+      ? {
+          google: {
+            clientId: config.auth.google.clientId,
+            clientSecret: config.auth.google.clientSecret,
+          },
+        }
+      : {}),
   },
 
   // Same list the CORS check uses: an origin trusted to call the API is trusted to be returned to

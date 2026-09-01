@@ -52,6 +52,29 @@ export interface AuthUser {
   image: string;
 }
 
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  image: string;
+  createdAt: string;
+  updatedAt: string;
+  providers: string[];
+  activeSessions: number;
+  isOwner: boolean;
+}
+
+export interface AdminDashboard {
+  viewerId: string;
+  totals: {
+    users: number;
+    activeSessions: number;
+    providers: Record<string, number>;
+  };
+  users: AdminUser[];
+  truncated: boolean;
+}
+
 export interface BingWallpaper {
   imageUrl: string;
   title: string;

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import AppModal from "./Common/Components/AppModal/AppModal";
 import Wallpaper from "./Common/Components/Wallpaper/Wallpaper";
-import { FileViewer, Footer, Header, Photos, SignIn } from "./Modules";
+import { Admin, FileViewer, Footer, Header, Photos, SignIn } from "./Modules";
 import { AuthProvider } from "./Services/auth";
 import { ExternalLinkProvider } from "./Services/externalLink";
 import { RouterProvider, resolveRoute, useRouter } from "./Services/router";
@@ -14,6 +14,7 @@ function pageTitle(pathname: string): string {
     return route.photoId ? "Photo — Hisuiki" : "Photos — Hisuiki";
   }
   if (route.kind === "signin") return "Sign in — Hisuiki";
+  if (route.kind === "admin") return "Control panel — Hisuiki";
   if (route.isBlogIndex) return "Blog — Hisuiki";
   if (route.filePath.startsWith("blog/")) {
     const slug = route.filePath.slice("blog/".length).replace(/(\.ja)?\.md$/, "");
@@ -56,6 +57,14 @@ function Shell() {
           <div className="main-content-container">
             <div className="file-content" data-phase="ready">
               <SignIn isJapanese={route.japanese} />
+            </div>
+          </div>
+        </main>
+      ) : route.kind === "admin" ? (
+        <main className="main-content">
+          <div className="main-content-container">
+            <div className="file-content" data-phase="ready">
+              <Admin isJapanese={route.japanese} />
             </div>
           </div>
         </main>

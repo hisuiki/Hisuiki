@@ -578,3 +578,34 @@ a:hover { text-decoration: underline; color: var(--color-accent-strong); }
 .signin-signed-in { margin: 0; font-size: 0.95rem; font-weight: 300; color: var(--color-text-secondary); }
 /* The "home" action is a link styled as a button, so it needs the button's own box back. */
 .signin-panel a.editor-btn { display: inline-flex; align-items: center; text-decoration: none; color: var(--color-text); }
+
+/* ── Admin control panel ──────────────────────────────────────────────── */
+.admin-panel { margin: 1.5em 0; display: flex; flex-direction: column; gap: 1.25em; }
+.admin-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1em; }
+.admin-heading h2, .admin-panel > h2 { margin: 0; font-size: 1.3rem; color: var(--color-text); }
+.admin-subtitle, .admin-loading, .admin-empty, .admin-limit { margin: 0; color: var(--color-text-muted); }
+.admin-inline-action { align-self: flex-start; display: inline-flex; text-decoration: none; }
+.admin-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8em; }
+.admin-stat { min-width: 0; padding: 1em; border-left: 3px solid var(--color-accent); background: var(--color-surface-veil); display: flex; flex-direction: column; gap: 0.2em; }
+.admin-stat strong { font-size: 1.7rem; font-weight: 300; color: var(--color-text); font-variant-numeric: tabular-nums; }
+.admin-stat span { color: var(--color-text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-search { display: flex; gap: 0.6em; flex-wrap: wrap; }
+.admin-search .editor-commit-input { flex: 1 1 260px; }
+.admin-users { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.admin-user { display: flex; align-items: center; justify-content: space-between; gap: 1.2em; padding: 1em 0; border-bottom: 1px solid var(--color-text-faint); }
+.admin-user:first-child { border-top: 1px solid var(--color-text-faint); }
+.admin-user-main { display: flex; align-items: center; gap: 0.8em; min-width: 0; }
+.admin-avatar { flex: 0 0 auto; width: 42px; height: 42px; object-fit: cover; border-radius: 50%; border: 1px solid var(--color-text-muted); }
+.admin-avatar-fallback { display: grid; place-items: center; background: var(--color-accent-muted); color: var(--color-text); font-weight: 600; }
+.admin-user-identity { display: flex; flex-direction: column; gap: 0.12em; min-width: 0; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.admin-user-name { display: flex; align-items: center; gap: 0.45em; flex-wrap: wrap; color: var(--color-text); }
+.admin-badge { padding: 0.1em 0.45em; background: var(--color-accent-soft); color: var(--color-accent-strong); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.admin-user-meta { color: var(--color-text-muted); font-size: 0.78rem; }
+.admin-user-actions { flex: 0 0 auto; display: flex; justify-content: flex-end; gap: 0.6em; flex-wrap: wrap; }
+.admin-danger-btn { background: var(--color-danger-bg); border-color: var(--color-danger); color: var(--color-danger); }
+.admin-danger-btn:hover { background: var(--color-danger); color: var(--color-text); }
+@media screen and (max-width: 700px) {
+  .admin-stats { grid-template-columns: 1fr; }
+  .admin-user { align-items: stretch; flex-direction: column; }
+  .admin-user-actions { justify-content: flex-start; }
+}
