@@ -33,7 +33,7 @@ Also managed a Moggo client project during my freelance work.
 
 ## Technologies
 
-**Development:** Java, TypeScript, Spring Boot, NestJS, React, REST APIs  
+**Development:** Java, TypeScript, Spring Boot, NestJS, React, REST APIs, ASP.NET Core and C# (beginner)  
 **Infrastructure:** Docker, Kubernetes, k3s, Ansible  
 **Cloud:** AWS, Google Cloud, Azure, OVHcloud, use of Terraform
 **Observability:** OpenTelemetry, Datadog, SolarWinds
